@@ -1,4 +1,4 @@
-# Ledger Avalanche app
+# Ledger Lux app
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![npm version](https://badge.fury.io/js/%40zondax%2Fledger-avalanche-app.svg)](https://badge.fury.io/js/%40zondax%2Fledger-avalanche-app)
 [![GithubActions](https://github.com/ava-labs/ledger-avalanche/actions/workflows/main.yaml/badge.svg)](https://github.com/ava-labs/ledger-avalanche/blob/main/.github/workflows/main.yaml)
