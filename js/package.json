@@ -1,28 +1,28 @@
 {
-  "name": "@avalabs/hw-app-avalanche",
-  "author": "Zondax AG",
+  "name": "@luxfi/hw-app-lux",
+  "author": "Lux Partners Limited",
   "license": "Apache-2.0",
   "version": "0.6.8",
-  "description": "Node API for Avalanche App (Ledger Nano S/X/S+)",
+  "description": "Node API for Lux App (Ledger Nano S/X/S+)",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "types": "./dist/index.d.ts",
-  "homepage": "https://github.com/ava-labs/ledger-avalanche",
+  "homepage": "https://github.com/luxfi/ledger",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ava-labs/ledger-avalanche.git"
+    "url": "git+https://github.com/luxfi/ledger.git"
   },
   "keywords": [
-    "Zondax",
     "Ledger",
-    "Avalanche",
+    "Lux",
+    "Lux DeFi",
     "Javascript"
   ],
   "scripts": {
     "build": "tsc"
   },
   "bugs": {
-    "url": "https://github.com/ava-labs/ledger-avalanche/issues"
+    "url": "https://github.com/luxfi/ledger/issues"
   },
   "dependencies": {
     "@ledgerhq/hw-app-eth": "^6.29.7",

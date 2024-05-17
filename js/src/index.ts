@@ -97,7 +97,7 @@ function processGetXPubResponse(response: Buffer) {
   }
 }
 
-export default class AvalancheApp {
+export default class LuxApp {
   transport
   private eth
 
@@ -135,9 +135,9 @@ export default class AvalancheApp {
 
   private async signGetChunks(message: Buffer, path?: string) {
     if (path === undefined) {
-      return AvalancheApp.prepareChunks(message, Buffer.alloc(0))
+      return LuxApp.prepareChunks(message, Buffer.alloc(0))
     } else {
-      return AvalancheApp.prepareChunks(message, serializePath(path))
+      return LuxApp.prepareChunks(message, serializePath(path))
     }
   }
 
@@ -345,27 +345,27 @@ export default class AvalancheApp {
   }
 
   // Sign an arbitrary message.
-  // This function takes in an avax path prefix like: m/44'/9000'/0'/0'
+  // This function takes in an lux path prefix like: m/44'/9000'/0'/0'
   // signing_paths: ["0/1", "5/8"]
   // message: The message to be signed
   async signMsg(path_prefix: string, signing_paths: Array<string>, message: string): Promise<ResponseSign> {
     const coinType = pathCoinType(path_prefix)
 
     if (coinType !== "9000'") {
-      throw new Error('Only avax path is supported')
+      throw new Error('Only lux path is supported')
     }
 
-    const header = Buffer.from('\x1AAvalanche Signed Message:\n', 'utf8')
+    const header = Buffer.from('\x1ALux Signed Message:\n', 'utf8')
 
     const content = Buffer.from(message, 'utf8')
 
     const msgSize = Buffer.alloc(4)
     msgSize.writeUInt32BE(content.length, 0)
 
-    const avax_msg = Buffer.from(`${header}${msgSize}${content}`, 'utf8')
+    const lux_msg = Buffer.from(`${header}${msgSize}${content}`, 'utf8')
 
     // Send msg for review
-    const response = await this.signGetChunks(avax_msg, path_prefix).then(chunks => {
+    const response = await this.signGetChunks(lux_msg, path_prefix).then(chunks => {
       return this.signSendChunk(1, chunks.length, chunks[0], FIRST_MESSAGE, INS.SIGN_MSG).then(async response => {
         // initialize response
         let result = {
