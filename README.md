@@ -3,15 +3,6 @@
 [![npm version](https://badge.fury.io/js/%40zondax%2Fledger-avalanche-app.svg)](https://badge.fury.io/js/%40zondax%2Fledger-avalanche-app)
 [![GithubActions](https://github.com/ava-labs/ledger-avalanche/actions/workflows/main.yaml/badge.svg)](https://github.com/ava-labs/ledger-avalanche/blob/main/.github/workflows/main.yaml)
 
----
-
-![zondax_light](docs/zondax_light.png#gh-light-mode-only)
-![zondax_dark](docs/zondax_dark.png#gh-dark-mode-only)
-
-_Please visit our website at [zondax.ch](https://www.zondax.ch)_
-
----
-
 This project contains the Avalanche app for Ledger Nano S, S+ and X.
 
 - Ledger Nano S/S+/X BOLOS app
