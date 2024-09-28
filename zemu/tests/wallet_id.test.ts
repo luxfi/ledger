@@ -16,7 +16,7 @@
 
 import Zemu from '@zondax/zemu'
 import { defaultOptions, models } from './common'
-import AvalancheApp from '@zondax/ledger-avalanche-app'
+import LuxApp from '@zondax/ledger-lux-app'
 
 describe.each(models)('Standard [%s] - wallet id', function (m) {
   test(
@@ -25,7 +25,7 @@ describe.each(models)('Standard [%s] - wallet id', function (m) {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
-        const app = new AvalancheApp(sim.getTransport())
+        const app = new LuxApp(sim.getTransport())
         const resp = await app.getWalletId()
 
         console.log(resp, m.name)
@@ -45,7 +45,7 @@ describe.each(models)('Standard [%s] - wallet id', function (m) {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
-        const app = new AvalancheApp(sim.getTransport())
+        const app = new LuxApp(sim.getTransport())
         const respReq = app.showWalletId()
 
         await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())

@@ -18,7 +18,7 @@ use nom::bytes::complete::{tag, take};
 use nom::number::complete::{be_u16, be_u8};
 use zemu_sys::ViewError;
 
-use crate::parser::{nano_avax_to_fp_str, ChainId};
+use crate::parser::{nano_lux_to_fp_str, ChainId};
 use crate::{
     handlers::handle_ui_message,
     parser::{
@@ -162,12 +162,12 @@ impl<'b> DisplayableItem for CreateAssetTx<'b> {
             }
 
             4 => {
-                let label = pic_str!(b"Fee(AVAX)");
+                let label = pic_str!(b"Fee(LUX)");
                 title[..label.len()].copy_from_slice(label);
 
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
                 let fee_buff =
-                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+                    nano_lux_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
 
                 handle_ui_message(fee_buff, message, page)
             }

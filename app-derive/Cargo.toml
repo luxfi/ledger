@@ -1,5 +1,5 @@
 [package]
-name = "avalanche-app-derive"
+name = "lux-app-derive"
 version = "0.1.0"
 authors = ["Zondax <hello@zondax.ch>"]
 edition = "2018"

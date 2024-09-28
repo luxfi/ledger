@@ -15,7 +15,7 @@
 ********************************************************************************/
 use crate::handlers::handle_ui_message;
 use crate::parser::{
-    cb58_output_len, nano_avax_to_fp_str, DisplayableItem, FromBytes, ParserError,
+    cb58_output_len, nano_lux_to_fp_str, DisplayableItem, FromBytes, ParserError,
     CB58_CHECKSUM_LEN,
 };
 use crate::sys::{
@@ -132,11 +132,11 @@ impl<'b> DisplayableItem for Validator<'b> {
                 handle_ui_message(time.as_slice(), message, page)
             }
             3 => {
-                let label = pic_str!(b"Total stake(AVAX)");
+                let label = pic_str!(b"Total stake(LUX)");
                 title[..label.len()].copy_from_slice(label);
 
                 let mut buffer = [0; u64::FORMATTED_SIZE + 2];
-                let num = nano_avax_to_fp_str(self.weight, &mut buffer[..])
+                let num = nano_lux_to_fp_str(self.weight, &mut buffer[..])
                     .map_err(|_| ViewError::Unknown)?;
 
                 handle_ui_message(num, message, page)

@@ -52,7 +52,7 @@ pub use coreth::{
 pub use error::ParserError;
 pub use initial_state::{FxId, InitialState};
 pub use inputs::{Input, SECPTransferInput, TransferableInput};
-pub use message::{AvaxMessage, Message};
+pub use message::{LuxMessage, Message};
 pub use network_info::*;
 pub use object_list::ObjectList;
 pub use operations::{Operation, TransferableOp};

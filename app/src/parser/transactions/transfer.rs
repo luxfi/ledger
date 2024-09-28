@@ -19,7 +19,7 @@ use zemu_sys::ViewError;
 
 use crate::handlers::handle_ui_message;
 use crate::parser::{
-    nano_avax_to_fp_str, AvmOutput, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
+    nano_lux_to_fp_str, AvmOutput, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
     MAX_ADDRESS_ENCODED_LEN, TRANSFER_TX,
 };
 
@@ -169,15 +169,15 @@ impl<'b> DisplayableItem for Transfer<'b> {
             x @ 0.. if x < outputs_items => self.render_outputs(x, title, message, page),
 
             x if x == outputs_items => {
-                let t = pic_str!(b"Fee(AVAX)");
+                let t = pic_str!(b"Fee(LUX)");
                 title[..t.len()].copy_from_slice(t);
 
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
                 let mut content = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
                 let fee =
-                    nano_avax_to_fp_str(fee, &mut content[..]).map_err(|_| ViewError::Unknown)?;
+                    nano_lux_to_fp_str(fee, &mut content[..]).map_err(|_| ViewError::Unknown)?;
 
-                // write avax
+                // write lux
                 handle_ui_message(fee, message, page)
             }
 

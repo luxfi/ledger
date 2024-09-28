@@ -16,7 +16,7 @@
 
 import Zemu from '@zondax/zemu'
 import { APP_DERIVATION, defaultOptions, models } from './common'
-import AvalancheApp from '@zondax/ledger-avalanche-app'
+import LuxApp from '@zondax/ledger-lux-app'
 import { encode as bs58_encode } from 'bs58'
 
 const EXPECTED_PUBLIC_KEY = '02c6f477ff8e7136de982f898f6bfe93136bbe8dada6c17d0cd369acce90036ac4';
@@ -28,7 +28,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
-        const app = new AvalancheApp(sim.getTransport())
+        const app = new LuxApp(sim.getTransport())
         const resp = await app.getAddressAndPubKey(APP_DERIVATION, false)
 
         console.log(resp, m.name)
@@ -39,7 +39,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
         expect(resp).toHaveProperty('hash')
         expect(resp).toHaveProperty('address')
         expect(resp.publicKey.toString('hex')).toEqual(EXPECTED_PUBLIC_KEY)
-        expect(resp.address).toEqual('P-avax1tlq4m9js4ckqvz9umfz7tjxna3yysm79r2jz8e')
+        expect(resp.address).toEqual('P-lux1tlq4m9js4ckqvz9umfz7tjxna3yysm79r2jz8e')
       } finally {
         await sim.close()
       }
@@ -52,7 +52,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
-        const app = new AvalancheApp(sim.getTransport())
+        const app = new LuxApp(sim.getTransport())
         const respReq = app.getAddressAndPubKey(APP_DERIVATION, true)
 
         await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
@@ -78,7 +78,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
-        const app = new AvalancheApp(sim.getTransport())
+        const app = new LuxApp(sim.getTransport())
         const resp = await app.getAddressAndPubKey(APP_DERIVATION, false,
           "zemu", bs58_encode(Buffer.alloc(32, 42)))
 
@@ -103,7 +103,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
-        const app = new AvalancheApp(sim.getTransport())
+        const app = new LuxApp(sim.getTransport())
         const respReq = app.getAddressAndPubKey(APP_DERIVATION, true,
           "zemu", bs58_encode(Buffer.alloc(32, 42)))
 
