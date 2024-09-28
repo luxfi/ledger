@@ -20,7 +20,7 @@ use nom::bytes::complete::tag;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
+        nano_lux_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
         PvmOutput, SubnetAuth, SubnetId, Validator, PVM_ADD_SUBNET_VALIDATOR,
     },
 };
@@ -109,14 +109,14 @@ impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
 
             // render fee
             x if x == validator_items + 1 => {
-                let label = pic_str!(b"Fee(AVAX)");
+                let label = pic_str!(b"Fee(LUX)");
                 title[..label.len()].copy_from_slice(label);
 
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
 
                 let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
                 let fee_buff =
-                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+                    nano_lux_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
                 handle_ui_message(fee_buff, message, page)
             }
             _ => Err(ViewError::NoData),

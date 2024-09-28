@@ -21,7 +21,7 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        intstr_to_fpstr_inplace, nano_avax_to_fp_str, u64_to_str, Address, BaseTxFields,
+        intstr_to_fpstr_inplace, nano_lux_to_fp_str, u64_to_str, Address, BaseTxFields,
         DisplayableItem, FromBytes, Header, ObjectList, OutputIdx, ParserError, PvmOutput,
         SECPOutputOwners, TransferableOutput, Validator, DELEGATION_FEE_DIGITS,
         MAX_ADDRESS_ENCODED_LEN, PVM_ADD_VALIDATOR,
@@ -277,11 +277,11 @@ impl<'b> AddValidatorTx<'b> {
         header: &[u8],
     ) -> Result<u8, ViewError> {
         //  'Transfer' or 'Stake':
-        //      '0.5 AVAX to
+        //      '0.5 LUX to
         //  Address:
         //      hrp + 1asxdpfsmah8wqr6m8ymfwse5e4pa9fwnvudmpn
         //  Funds locked:
-        //      0.5 AVAX until 2021-05-31 21:28:00 UTC
+        //      0.5 LUX until 2021-05-31 21:28:00 UTC
 
         // get the number of items for the obj wrapped up by PvmOutput
         let num_inner_items = obj.output.num_inner_items() as _;
@@ -300,7 +300,7 @@ impl<'b> AddValidatorTx<'b> {
 
                 res
             }
-            // address rendering, according to avax team 99.99% of transactions only comes with one
+            // address rendering, according to lux team 99.99% of transactions only comes with one
             // address, but we support rendering any
             x @ 1.. if x < num_inner_items => {
                 // get the address index
@@ -398,12 +398,12 @@ impl<'b> AddValidatorTx<'b> {
                 handle_ui_message(buffer, message, page)
             }
             x if x == (num_addresses + 1) => {
-                let label = pic_str!(b"Fee(AVAX)");
+                let label = pic_str!(b"Fee(LUX)");
                 title[..label.len()].copy_from_slice(label);
 
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
                 let fee_buff =
-                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+                    nano_lux_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
                 handle_ui_message(fee_buff, message, page)
             }
             _ => Err(ViewError::NoData),

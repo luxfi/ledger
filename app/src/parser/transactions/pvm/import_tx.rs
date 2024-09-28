@@ -21,7 +21,7 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        nano_avax_to_fp_str, BaseImport, DisplayableItem, FromBytes, ParserError, PvmOutput,
+        nano_lux_to_fp_str, BaseImport, DisplayableItem, FromBytes, ParserError, PvmOutput,
         PVM_IMPORT_TX,
     },
 };
@@ -102,7 +102,7 @@ impl<'b> DisplayableItem for PvmImportTx<'b> {
                 let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
                 let fee_str =
-                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+                    nano_lux_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
                 handle_ui_message(fee_str, message, page)
             }
             _ => Err(ViewError::NoData),

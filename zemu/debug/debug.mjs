@@ -1,5 +1,5 @@
 import Zemu from '@zondax/zemu'
-import AvalancheApp from '@zondax/ledger-avalanche-app'
+import LuxApp from '@zondax/ledger-lux-app'
 import Eth from '@ledgerhq/hw-app-eth'
 import path from 'path'
 import * as readline from 'node:readline/promises'

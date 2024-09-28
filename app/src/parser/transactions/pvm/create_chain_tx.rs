@@ -23,7 +23,7 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        cb58_output_len, nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header,
+        cb58_output_len, nano_lux_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header,
         ParserError, PvmOutput, SubnetAuth, SubnetId, CB58_CHECKSUM_LEN, PVM_CREATE_CHAIN,
     },
     utils::{bs58_encode, hex_encode, ApduPanic},
@@ -87,7 +87,7 @@ impl<'b> FromBytes<'b> for CreateChainTx<'b> {
         let (rem, chain_name_len) = be_u16(rem)?;
         let (rem, chain_name) = take(chain_name_len as usize)(rem)?;
         // chain name is a valid utf8 string according
-        // to avalanche's docs
+        // to lux's docs
         // double check for ascii bytes
         if !chain_name.is_ascii() {
             return Err(ParserError::InvalidAsciiValue.into());
@@ -181,13 +181,13 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
                 handle_ui_message(&hex_buf, message, page)
             }
             5 => {
-                let label = pic_str!(b"Fee(AVAX)");
+                let label = pic_str!(b"Fee(LUX)");
                 title[..label.len()].copy_from_slice(label);
 
                 let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
                 let fee_buff =
-                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+                    nano_lux_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
 
                 handle_ui_message(fee_buff, message, page)
             }

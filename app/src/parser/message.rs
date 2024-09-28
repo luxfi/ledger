@@ -135,11 +135,11 @@ impl<'b> DisplayableItem for Message<'b> {
 #[derive(Clone, Copy, PartialEq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
-pub struct AvaxMessage<'b> {
+pub struct LuxMessage<'b> {
     data: Message<'b>,
 }
 
-impl<'b> AvaxMessage<'b> {
+impl<'b> LuxMessage<'b> {
     pub fn new(data: &'b [u8]) -> Result<Self, ParserError> {
         let mut this = MaybeUninit::uninit();
         let _ = Self::from_bytes_into(data, &mut this)?;
@@ -151,16 +151,16 @@ impl<'b> AvaxMessage<'b> {
     }
 }
 
-impl<'b> FromBytes<'b> for AvaxMessage<'b> {
+impl<'b> FromBytes<'b> for LuxMessage<'b> {
     #[inline(never)]
     fn from_bytes_into(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        // Avax message structure: Header + 4-byte msg_len + msg
+        // Lux message structure: Header + 4-byte msg_len + msg
         // according to:
-        // https://docs.avax.network/community/tutorials-contest/2021/red-dev-sig-verify-tutorial#1-hash-the-message
-        let header = pic_str!(b"\x1AAvalanche Signed Message:\n"!);
+        // https://docs.lux.network/community/tutorials-contest/2021/red-dev-sig-verify-tutorial#1-hash-the-message
+        let header = pic_str!(b"\x1ALux Signed Message:\n"!);
 
         let (rem, _) = tag(header)(input)?;
 
@@ -174,7 +174,7 @@ impl<'b> FromBytes<'b> for AvaxMessage<'b> {
     }
 }
 
-impl<'b> DisplayableItem for AvaxMessage<'b> {
+impl<'b> DisplayableItem for LuxMessage<'b> {
     fn num_items(&self) -> usize {
         // Description + message
         1 + self.data.num_items()
@@ -191,7 +191,7 @@ impl<'b> DisplayableItem for AvaxMessage<'b> {
             0 => {
                 let label = pic_str!(b"Sign");
                 title[..label.len()].copy_from_slice(label);
-                let content = pic_str!("Avax Message");
+                let content = pic_str!("Lux Message");
                 handle_ui_message(content.as_bytes(), message, page)
             }
             x @ 1.. => {
@@ -206,8 +206,8 @@ impl<'b> DisplayableItem for AvaxMessage<'b> {
 mod tests {
     use super::*;
 
-    const DATA: &str = "An AvalancheMessage to sign";
-    const HEADER: &str = "\x1AAvalanche Signed Message:\n";
+    const DATA: &str = "An LuxMessage to sign";
+    const HEADER: &str = "\x1ALux Signed Message:\n";
 
     fn construct_msg(msg: &str) -> std::vec::Vec<u8> {
         let mut vec = std::vec![];
@@ -219,9 +219,9 @@ mod tests {
     }
 
     #[test]
-    fn parse_avax_msg() {
+    fn parse_lux_msg() {
         let msg = construct_msg(DATA);
-        let (_, tx) = AvaxMessage::from_bytes(&msg).unwrap();
+        let (_, tx) = LuxMessage::from_bytes(&msg).unwrap();
         let m = std::str::from_utf8(tx.msg()).unwrap();
         assert_eq!(m, DATA);
     }

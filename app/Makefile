@@ -51,16 +51,16 @@ $(info ************ LOGGING ENABLED ************)
 endif
 
 ifndef COIN
-COIN=AVAX
+COIN=LUX
 endif
 
 include $(CURDIR)/Makefile.version
 
 $(info COIN  = [$(COIN)])
-ifeq ($(COIN),AVAX)
+ifeq ($(COIN),LUX)
 # Main app configuration
 DEFINES += APP_STANDARD
-APPNAME = "Avalanche"
+APPNAME = "Lux"
 APPPATH = "44'/9000'" --path "44'/60'"
 else
 define error_message
@@ -258,7 +258,7 @@ dep/%.d: %.c Makefile
 
 .PHONY: listvariants
 listvariants:
-	@echo VARIANTS COIN AVAX
+	@echo VARIANTS COIN LUX
 
 .PHONY: version
 version:

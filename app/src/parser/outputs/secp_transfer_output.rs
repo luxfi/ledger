@@ -23,10 +23,10 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{nano_avax_to_fp_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
+    parser::{nano_lux_to_fp_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
 };
 
-const AVAX_TO_LEN: usize = 9; //b" AVAX to "
+const LUX_TO_LEN: usize = 9; //b" LUX to "
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
@@ -90,7 +90,7 @@ impl<'b> FromBytes<'b> for SECPTransferOutput<'b> {
 
 impl<'a> DisplayableItem for SECPTransferOutput<'a> {
     fn num_items(&self) -> usize {
-        // According to avalanche team, and to be "compatible" at presentation layer
+        // According to lux team, and to be "compatible" at presentation layer
         // we should summarize the items to show. As they suggested we only show the amount
         // and address. Legacy app errors if there is more than 1 address, in our case we dont yet.
         //
@@ -109,7 +109,7 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
         use bolos::{pic_str, PIC};
         use lexical_core::Number;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + AVAX_TO_LEN];
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + LUX_TO_LEN];
         let addr_item_n = self.num_items() - self.addresses.len();
 
         match item_n as usize {
@@ -117,16 +117,16 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
                 let title_content = pic_str!(b"Amount");
                 title[..title_content.len()].copy_from_slice(title_content);
 
-                let avax_to = pic_str!(b" AVAX to ");
+                let lux_to = pic_str!(b" LUX to ");
 
                 // write the amount
-                let len = nano_avax_to_fp_str(self.amount, &mut buffer[..])
+                let len = nano_lux_to_fp_str(self.amount, &mut buffer[..])
                     .map_err(|_| ViewError::Unknown)?
                     .len();
 
-                // write avax
-                buffer[len..(len + avax_to.len())].copy_from_slice(avax_to);
-                handle_ui_message(&buffer[..(len + avax_to.len())], message, page)
+                // write lux
+                buffer[len..(len + lux_to.len())].copy_from_slice(lux_to);
+                handle_ui_message(&buffer[..(len + lux_to.len())], message, page)
             }
 
             x @ 1.. if x >= addr_item_n => {
