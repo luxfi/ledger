@@ -141,7 +141,7 @@ func (ledger *LedgerLux) GetPubKey(path string, show bool, hrp string, chainid s
 	hash := response[publicKeyLen+1 : publicKeyLen+1+20]
 	address := string(response[publicKeyLen+1+20:])
 
-	return &ResponseAddr{publicKey, hash, address}, nil
+	return &ResponseAddr{PublicKey: publicKey, Hash: hash, Address: address}, nil
 }
 
 func (ledger *LedgerLux) Sign(pathPrefix string, signingPaths []string, message []byte, changePaths []string) (*ResponseSign, error) {
@@ -268,11 +268,11 @@ func (ledger *LedgerLux) VerifyMultipleSignatures(response ResponseSign, message
 			return errors.New("error getting the pubkey")
 		}
 
-		hexString := fmt.Sprintf("%x", addr.publicKey)
+		hexString := fmt.Sprintf("%x", addr.PublicKey)
 		fmt.Println(hexString)
 
 		sigLen := len(response.Signature[suffix])
-		verified := VerifySignature(addr.publicKey, messageHash, response.Signature[suffix][:sigLen-1])
+		verified := VerifySignature(addr.PublicKey, messageHash, response.Signature[suffix][:sigLen-1])
 
 		if !verified {
 			return errors.New("[VerifySig] Error verifying signature: ")
