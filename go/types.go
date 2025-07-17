@@ -112,7 +112,7 @@ type ResponseSign struct {
 }
 
 type ResponseAddr struct {
-	publicKey []byte
-	hash      []byte
-	address   string
+	PublicKey []byte
+	Hash      []byte
+	Address   string
 }
