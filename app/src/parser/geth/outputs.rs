@@ -67,7 +67,7 @@ impl<'b> EOutput<'b> {
     fn parse_output_type(input: &[u8]) -> Result<OutputType, nom::Err<ParserError>> {
         let (_, variant_type) = be_u32(input)?;
 
-        // Coreth only supports the SECPTransferOutput variant
+        // Geth only supports the SECPTransferOutput variant
         let v = match variant_type {
             SECPTransferOutput::TYPE_ID => OutputType::SECPTransfer,
             _ => return Err(ParserError::InvalidTypeId.into()),

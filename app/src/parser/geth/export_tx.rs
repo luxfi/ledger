@@ -351,7 +351,7 @@ mod tests {
     ];
 
     #[test]
-    fn parse_coreth_export_tx() {
+    fn parse_geth_export_tx() {
         let (rem, tx) = ExportTx::from_bytes(DATA).unwrap();
         assert!(rem.is_empty());
 
@@ -388,7 +388,7 @@ mod tests {
     ];
 
     #[test]
-    fn parse_coreth_export_tx2() {
+    fn parse_geth_export_tx2() {
         let (rem, tx) = ExportTx::from_bytes(DATA2).unwrap();
         assert!(rem.is_empty());
         let count = tx.inputs.iter().count();

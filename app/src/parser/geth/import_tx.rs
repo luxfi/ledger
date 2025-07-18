@@ -26,7 +26,7 @@ use crate::{
     constants::chain_alias_lookup,
     handlers::handle_ui_message,
     parser::{
-        coreth::outputs::EVMOutput, nano_lux_to_fp_str, ChainId, DisplayableItem, FromBytes,
+        geth::outputs::EVMOutput, nano_lux_to_fp_str, ChainId, DisplayableItem, FromBytes,
         Header, ObjectList, OutputIdx, ParserError, TransferableInput, BLOCKCHAIN_ID_LEN,
         EVM_IMPORT_TX, MAX_ADDRESS_ENCODED_LEN,
     },
@@ -328,7 +328,7 @@ mod tests {
     ];
 
     #[test]
-    fn parse_coreth_import_tx() {
+    fn parse_geth_import_tx() {
         let (rem, tx) = ImportTx::from_bytes(DATA).unwrap();
         assert!(rem.is_empty());
         let count = tx.inputs.iter().count();
@@ -364,7 +364,7 @@ mod tests {
     ];
 
     #[test]
-    fn parse_coreth_import_tx2() {
+    fn parse_geth_import_tx2() {
         let (rem, tx) = ImportTx::from_bytes(DATA2).unwrap();
         assert!(rem.is_empty());
         let count = tx.inputs.iter().count();
