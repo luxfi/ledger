@@ -1,7 +1,7 @@
 ---
-source: app/src/parser/coreth/native.rs
+source: app/src/parser/geth/native.rs
 expression: reduced
-input_file: app/src/parser/coreth/eth_testvectors/usdt_transfer.json
+input_file: app/src/parser/geth/eth_testvectors/usdt_transfer.json
 ---
 [
     "ERC-20": "transfer",
