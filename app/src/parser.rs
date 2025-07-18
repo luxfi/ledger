@@ -21,7 +21,7 @@ mod address;
 mod asset_id;
 mod avm_output;
 mod constants;
-mod coreth;
+mod geth;
 mod error;
 mod initial_state;
 mod inputs;
@@ -45,7 +45,7 @@ pub use address::*;
 pub use asset_id::AssetId;
 pub use avm_output::AvmOutput;
 pub use constants::*;
-pub use coreth::{
+pub use geth::{
     bytes_to_u64, data::EthData, export_tx::ExportTx, import_tx::ImportTx, native::EthTransaction,
     PersonalMsg,
 };
@@ -69,7 +69,7 @@ pub use utxo_id::UtxoId;
 pub use validator::*;
 
 #[cfg(feature = "erc721")]
-pub use coreth::{data::ERC721Info, nft_info::NftInfo};
+pub use geth::{data::ERC721Info, nft_info::NftInfo};
 
 ///This trait defines the interface useful in the UI context
 /// so that all the different OperationTypes or other items can handle their own UI

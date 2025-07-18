@@ -1,7 +1,7 @@
 ---
-source: app/src/parser/coreth/native.rs
+source: app/src/parser/geth/native.rs
 expression: reduced
-input_file: app/src/parser/coreth/eth_testvectors/eip2930_contract_call.json
+input_file: app/src/parser/geth/eth_testvectors/eip2930_contract_call.json
 ---
 [
     "Contract": "Call",

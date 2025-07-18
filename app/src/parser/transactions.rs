@@ -415,7 +415,7 @@ impl<'b> Transaction<'b> {
         Ok(rem)
     }
 
-    // Returns True if transaction is one of the supported coreth transactions.
+    // Returns True if transaction is one of the supported geth transactions.
     pub fn is_eth(&self) -> bool {
         matches!(self, Self::CExport(_)) || matches!(self, Self::CImport(_))
     }
