@@ -14,7 +14,7 @@
 *  limitations under the License.
 // ********************************************************************************/
 
-package ledger_lux_go
+package ledger
 
 import (
 	"errors"
