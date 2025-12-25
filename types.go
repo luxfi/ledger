@@ -18,7 +18,6 @@ package ledger
 
 import (
 	"fmt"
-	"github.com/zondax/ledger-go"
 )
 
 const (
@@ -85,7 +84,7 @@ const (
 
 // LedgerLux represents a connection to the Lux app in a Ledger device
 type LedgerLux struct {
-	api     ledger_go.LedgerDevice
+	api     LedgerDevice
 	version VersionInfo
 }
 
