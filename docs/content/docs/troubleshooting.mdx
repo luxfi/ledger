@@ -1,0 +1,546 @@
+---
+title: Troubleshooting Guide
+description: Solutions for common issues with Lux Ledger integration
+---
+
+# Troubleshooting Guide
+
+This guide provides solutions for common issues you may encounter when using the Lux Ledger integration.
+
+## Connection Issues
+
+### Device Not Found
+
+**Error**: `"no ledger device found"` or `"cannot open device"`
+
+**Solutions**:
+
+1. **Check USB Connection**
+   ```bash
+   # Linux: Check if device is detected
+   lsusb | grep Ledger
+
+   # macOS: Check USB devices
+   system_profiler SPUSBDataType | grep Ledger
+
+   # Windows: Check Device Manager
+   # Look for "Ledger" under Human Interface Devices
+   ```
+
+2. **Verify USB Permissions (Linux)**
+   ```bash
+   # Add udev rules
+   sudo wget -q -O - https://raw.githubusercontent.com/LedgerHQ/udev-rules/master/add_udev_rules.sh | sudo bash
+
+   # Or manually create rules
+   sudo nano /etc/udev/rules.d/20-hw1.rules
+
+   # Add these lines:
+   SUBSYSTEMS=="usb", ATTRS{idVendor}=="2c97", MODE="0660", GROUP="plugdev"
+
+   # Reload rules
+   sudo udevadm control --reload-rules
+   sudo udevadm trigger
+
+   # Add user to plugdev group
+   sudo usermod -aG plugdev $USER
+
+   # Logout and login again for changes to take effect
+   ```
+
+3. **Check Cable and Port**
+   - Try a different USB cable (data cable, not charge-only)
+   - Use a different USB port
+   - Connect directly to computer (not through hub)
+   - Try USB 2.0 port if USB 3.0 fails
+
+### App Not Open
+
+**Error**: `"[APDU_CODE_CLA_NOT_SUPPORTED] CLA not supported"` or `"are you sure the Lux app is open?"`
+
+**Solution**:
+```go
+func ensureAppOpen(maxRetries int) (*ledger.LedgerLux, error) {
+    var lastErr error
+
+    for i := 0; i < maxRetries; i++ {
+        app, err := ledger.FindLedgerLuxApp()
+        if err == nil {
+            return app, nil
+        }
+
+        lastErr = err
+
+        if strings.Contains(err.Error(), "CLA not supported") {
+            fmt.Printf("Please open the Lux app on your Ledger device (attempt %d/%d)\n", i+1, maxRetries)
+            time.Sleep(3 * time.Second)
+            continue
+        }
+
+        return nil, err
+    }
+
+    return nil, fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
+}
+```
+
+### Device Locked
+
+**Error**: `"device is locked"` or PIN-related errors
+
+**Solutions**:
+1. Unlock device with PIN
+2. Check if device auto-locked due to inactivity
+3. Implement auto-unlock reminder:
+
+```go
+func maintainConnection(app *ledger.LedgerLux) {
+    ticker := time.NewTicker(30 * time.Second)
+    defer ticker.Stop()
+
+    go func() {
+        for range ticker.C {
+            // Send keep-alive to prevent auto-lock
+            _, err := app.GetVersion()
+            if err != nil {
+                fmt.Println("Device may have locked, please unlock")
+            }
+        }
+    }()
+}
+```
+
+## Version Issues
+
+### Incompatible App Version
+
+**Error**: `"version required"` or version mismatch errors
+
+**Solution**:
+```go
+func checkAndReportVersion(app *ledger.LedgerLux) error {
+    version, err := app.GetVersion()
+    if err != nil {
+        return err
+    }
+
+    fmt.Printf("Current version: %d.%d.%d\n", version.Major, version.Minor, version.Patch)
+
+    minVersion := ledger.VersionInfo{Major: 0, Minor: 4, Patch: 0}
+    if err := ledger.CheckVersion(*version, minVersion); err != nil {
+        fmt.Printf("Please update your Lux app to at least version %d.%d.%d\n",
+            minVersion.Major, minVersion.Minor, minVersion.Patch)
+        fmt.Println("You can update through Ledger Live Manager")
+        return err
+    }
+
+    return nil
+}
+```
+
+### Test Mode Detection
+
+**Issue**: App running in test mode
+
+**Detection**:
+```go
+func isTestMode(app *ledger.LedgerLux) (bool, error) {
+    version, err := app.GetVersion()
+    if err != nil {
+        return false, err
+    }
+
+    if version.AppMode == 0xFF {
+        fmt.Println("WARNING: Ledger app is running in TEST MODE")
+        fmt.Println("This should not be used for mainnet transactions")
+        return true, nil
+    }
+
+    return false, nil
+}
+```
+
+## Signing Issues
+
+### User Rejection
+
+**Error**: `"rejected"` or `"denied by user"`
+
+**Handling**:
+```go
+func handleUserRejection(err error) bool {
+    rejectionStrings := []string{
+        "rejected",
+        "denied",
+        "cancelled",
+        "6985", // APDU code for conditions not satisfied
+    }
+
+    errStr := strings.ToLower(err.Error())
+    for _, reject := range rejectionStrings {
+        if strings.Contains(errStr, reject) {
+            fmt.Println("Transaction was rejected on the device")
+            fmt.Println("Please verify transaction details and try again")
+            return true
+        }
+    }
+
+    return false
+}
+```
+
+### Timeout During Signing
+
+**Error**: Transaction times out waiting for user confirmation
+
+**Solution**:
+```go
+func signWithTimeout(app *ledger.LedgerLux, tx []byte, timeout time.Duration) error {
+    type result struct {
+        response *ledger.ResponseSign
+        err      error
+    }
+
+    resultChan := make(chan result, 1)
+
+    go func() {
+        resp, err := app.Sign("m/44'/9000'/0'", []string{"0/0"}, tx, nil)
+        resultChan <- result{resp, err}
+    }()
+
+    select {
+    case r := <-resultChan:
+        return r.err
+    case <-time.After(timeout):
+        return fmt.Errorf("signing timed out after %v - please confirm on device", timeout)
+    }
+}
+```
+
+### Invalid Transaction Data
+
+**Error**: `"[APDU_CODE_DATA_INVALID]"` or `"invalid data"`
+
+**Debugging**:
+```go
+func validateTransactionData(tx []byte) error {
+    // Check transaction size
+    if len(tx) == 0 {
+        return fmt.Errorf("transaction data is empty")
+    }
+
+    if len(tx) > 32768 { // 32KB limit
+        return fmt.Errorf("transaction too large: %d bytes (max 32768)", len(tx))
+    }
+
+    // Validate structure (example)
+    if len(tx) < 100 {
+        fmt.Println("Warning: Transaction seems too small, may be malformed")
+    }
+
+    // Log transaction for debugging
+    fmt.Printf("Transaction size: %d bytes\n", len(tx))
+    fmt.Printf("First 32 bytes: %x\n", tx[:min(32, len(tx))])
+
+    return nil
+}
+
+func min(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
+}
+```
+
+## Path Issues
+
+### Invalid Derivation Path
+
+**Error**: `"invalid path"` or path parsing errors
+
+**Validation**:
+```go
+func validatePath(path string) error {
+    // Check format
+    if !strings.HasPrefix(path, "m/") {
+        return fmt.Errorf("path must start with 'm/'")
+    }
+
+    parts := strings.Split(path[2:], "/")
+    if len(parts) < 2 || len(parts) > 6 {
+        return fmt.Errorf("path must have 2-6 components")
+    }
+
+    // Validate each component
+    for i, part := range parts {
+        hardened := strings.HasSuffix(part, "'")
+        if hardened {
+            part = part[:len(part)-1]
+        }
+
+        num, err := strconv.ParseUint(part, 10, 32)
+        if err != nil {
+            return fmt.Errorf("invalid path component %d: %s", i, part)
+        }
+
+        // Check standard paths
+        if i == 0 && num != 44 {
+            fmt.Println("Warning: Non-standard purpose (expected 44)")
+        }
+        if i == 1 && num != 9000 && num != 60 {
+            fmt.Println("Warning: Non-standard coin type (expected 9000 for Lux)")
+        }
+    }
+
+    return nil
+}
+```
+
+### Path Not Supported
+
+**Error**: Path rejected by device
+
+**Common Valid Paths**:
+```go
+var commonPaths = map[string]string{
+    "P-Chain Primary":    "m/44'/9000'/0'/0/0",
+    "X-Chain Primary":    "m/44'/9000'/0'/0/0",
+    "C-Chain Primary":    "m/44'/60'/0'/0/0",    // Ethereum-compatible
+    "Change Address":     "m/44'/9000'/0'/1/0",
+    "Second Account":     "m/44'/9000'/1'/0/0",
+}
+
+func suggestPath(chainType string) string {
+    switch chainType {
+    case "P", "X":
+        return "m/44'/9000'/0'/0/0"
+    case "C":
+        return "m/44'/60'/0'/0/0"
+    default:
+        return "m/44'/9000'/0'/0/0"
+    }
+}
+```
+
+## Performance Issues
+
+### Slow Response Times
+
+**Optimization**:
+```go
+// Cache connection
+var (
+    cachedApp *ledger.LedgerLux
+    cacheMux  sync.Mutex
+)
+
+func getCachedConnection() (*ledger.LedgerLux, error) {
+    cacheMux.Lock()
+    defer cacheMux.Unlock()
+
+    if cachedApp != nil {
+        // Verify connection still valid
+        if _, err := cachedApp.GetVersion(); err == nil {
+            return cachedApp, nil
+        }
+        // Connection lost, clean up
+        cachedApp.Close()
+        cachedApp = nil
+    }
+
+    // Create new connection
+    app, err := ledger.FindLedgerLuxApp()
+    if err != nil {
+        return nil, err
+    }
+
+    cachedApp = app
+    return app, nil
+}
+```
+
+### Multiple Device Handling
+
+**Managing Multiple Ledgers**:
+```go
+func findAllLedgers() ([]*ledger.LedgerLux, error) {
+    var devices []*ledger.LedgerLux
+
+    // Attempt to find multiple devices
+    for i := 0; i < 5; i++ {
+        app, err := ledger.FindLedgerLuxApp()
+        if err != nil {
+            break
+        }
+
+        // Get unique identifier
+        walletID, err := app.GetWalletID()
+        if err != nil {
+            app.Close()
+            continue
+        }
+
+        fmt.Printf("Found device %d with wallet ID: %x\n", i+1, walletID)
+        devices = append(devices, app)
+    }
+
+    if len(devices) == 0 {
+        return nil, fmt.Errorf("no Ledger devices found")
+    }
+
+    return devices, nil
+}
+```
+
+## Platform-Specific Issues
+
+### macOS Specific
+
+**Issue**: Permission prompts on each run
+
+**Solution**: Grant permanent access through System Preferences:
+1. System Preferences → Security & Privacy → Privacy
+2. Select "Input Monitoring" or "USB"
+3. Add your application
+
+### Linux Specific
+
+**Issue**: AppArmor/SELinux blocking access
+
+**Solution**:
+```bash
+# Check SELinux status
+getenforce
+
+# Temporarily disable for testing (not recommended for production)
+sudo setenforce 0
+
+# Better: Add proper SELinux context
+sudo semanage fcontext -a -t bin_t "/path/to/your/app"
+sudo restorecon -v "/path/to/your/app"
+```
+
+### Windows Specific
+
+**Issue**: Windows Defender blocking HID access
+
+**Solution**:
+1. Add exception in Windows Defender
+2. Run as Administrator (only for testing)
+3. Check Event Viewer for specific errors
+
+## Debugging Tools
+
+### Enable Debug Logging
+
+```go
+func enableDebugLogging() {
+    // Set environment variable
+    os.Setenv("LEDGER_DEBUG", "1")
+
+    // Custom logger
+    log.SetFlags(log.LstdFlags | log.Lshortfile)
+    log.SetPrefix("[LEDGER-DEBUG] ")
+}
+```
+
+### APDU Tracing
+
+```go
+func traceAPDU(command []byte, response []byte, err error) {
+    fmt.Printf("→ APDU Command: %x\n", command)
+    if err != nil {
+        fmt.Printf("← APDU Error: %v\n", err)
+    } else {
+        fmt.Printf("← APDU Response: %x\n", response)
+    }
+}
+```
+
+### Device Information Dump
+
+```go
+func dumpDeviceInfo(app *ledger.LedgerLux) {
+    fmt.Println("=== Ledger Device Information ===")
+
+    // Version
+    if version, err := app.GetVersion(); err == nil {
+        fmt.Printf("Version: %d.%d.%d\n", version.Major, version.Minor, version.Patch)
+        fmt.Printf("Mode: %02x\n", version.AppMode)
+    }
+
+    // Wallet ID
+    if walletID, err := app.GetWalletID(); err == nil {
+        fmt.Printf("Wallet ID: %x\n", walletID)
+    }
+
+    // Test addresses
+    testPaths := []string{
+        "m/44'/9000'/0'/0/0",
+        "m/44'/60'/0'/0/0",
+    }
+
+    for _, path := range testPaths {
+        if addr, err := app.GetPubKey(path, false, "lux", ""); err == nil {
+            fmt.Printf("Address (%s): %s\n", path, addr.Address)
+        }
+    }
+
+    fmt.Println("================================")
+}
+```
+
+## Recovery Procedures
+
+### Connection Recovery
+
+```go
+func recoverConnection(app *ledger.LedgerLux) (*ledger.LedgerLux, error) {
+    // Try to use existing connection
+    if _, err := app.GetVersion(); err == nil {
+        return app, nil
+    }
+
+    // Connection lost, close and retry
+    app.Close()
+
+    fmt.Println("Connection lost, attempting to reconnect...")
+
+    for i := 0; i < 3; i++ {
+        time.Sleep(time.Duration(i+1) * time.Second)
+
+        newApp, err := ledger.FindLedgerLuxApp()
+        if err == nil {
+            fmt.Println("Reconnected successfully")
+            return newApp, nil
+        }
+
+        fmt.Printf("Reconnection attempt %d failed\n", i+1)
+    }
+
+    return nil, fmt.Errorf("failed to recover connection")
+}
+```
+
+## Getting Help
+
+If you continue to experience issues:
+
+1. **Check Logs**: Enable debug logging as shown above
+2. **Update Software**: Ensure latest versions of Ledger app and library
+3. **Community Support**: Visit [Lux Discord](https://discord.gg/lux)
+4. **GitHub Issues**: Report bugs at [github.com/luxfi/ledger/issues](https://github.com/luxfi/ledger/issues)
+5. **Device Reset**: As last resort, reset Ledger device (backup seed first!)
+
+## Common Error Codes
+
+| Code | Meaning | Solution |
+|------|---------|----------|
+| 0x6985 | Conditions not satisfied | User rejected or preconditions not met |
+| 0x6A80 | Invalid data | Check transaction format |
+| 0x6D00 | INS not supported | Wrong app or outdated version |
+| 0x6E00 | CLA not supported | App not open or wrong app |
+| 0x6700 | Wrong length | Data size mismatch |
+| 0x6982 | Empty buffer | No data to sign |
+| 0x9000 | Success | Operation completed successfully |

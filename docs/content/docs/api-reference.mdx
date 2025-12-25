@@ -1,0 +1,566 @@
+---
+title: API Reference
+description: Complete API documentation for the Lux Ledger integration
+---
+
+# API Reference
+
+This page provides detailed documentation for all available methods in the Lux Ledger integration library.
+
+## Core Types
+
+### LedgerLux
+
+The main interface for communicating with a Ledger device running the Lux application.
+
+```go
+type LedgerLux struct {
+    api     ledger_go.LedgerDevice
+    version VersionInfo
+}
+```
+
+### VersionInfo
+
+Contains version information for the Lux app on the Ledger device.
+
+```go
+type VersionInfo struct {
+    AppMode uint8  // Application mode (0 = production, 0xFF = test)
+    Major   uint8  // Major version number
+    Minor   uint8  // Minor version number
+    Patch   uint8  // Patch version number
+}
+```
+
+### ResponseAddr
+
+Response structure for address operations.
+
+```go
+type ResponseAddr struct {
+    PublicKey []byte  // Public key bytes
+    Hash      []byte  // Address hash
+    Address   string  // Human-readable address
+}
+```
+
+### ResponseSign
+
+Response structure for signing operations.
+
+```go
+type ResponseSign struct {
+    Hash      []byte             // Transaction/message hash
+    Signature map[string][]byte  // Signature components
+}
+```
+
+## Connection Methods
+
+### FindLedgerLuxApp
+
+Discovers and connects to a Ledger device running the Lux application.
+
+```go
+func FindLedgerLuxApp() (*LedgerLux, error)
+```
+
+**Returns:**
+- `*LedgerLux`: Connected Ledger device instance
+- `error`: Connection error if any
+
+**Example:**
+```go
+app, err := ledger.FindLedgerLuxApp()
+if err != nil {
+    log.Fatal(err)
+}
+defer app.Close()
+```
+
+### Close
+
+Closes the connection to the Ledger device.
+
+```go
+func (l *LedgerLux) Close() error
+```
+
+**Returns:**
+- `error`: Close error if any
+
+## Information Methods
+
+### GetVersion
+
+Retrieves the version information of the Lux app on the Ledger device.
+
+```go
+func (l *LedgerLux) GetVersion() (*VersionInfo, error)
+```
+
+**Returns:**
+- `*VersionInfo`: Version details
+- `error`: Operation error if any
+
+**APDU Details:**
+- CLA: 0x80
+- INS: 0x00
+- P1: 0x00
+- P2: 0x00
+
+### GetWalletID
+
+Gets the unique wallet identifier from the device.
+
+```go
+func (l *LedgerLux) GetWalletID() ([]byte, error)
+```
+
+**Returns:**
+- `[]byte`: 6-byte wallet ID
+- `error`: Operation error if any
+
+**APDU Details:**
+- CLA: 0x80
+- INS: 0x01
+- P1: 0x00 (no confirmation) / 0x01 (with confirmation)
+- P2: 0x00
+
+## Address Management
+
+### GetPubKey
+
+Derives a public key and address for the specified path with HRP and chain ID.
+
+```go
+func (l *LedgerLux) GetPubKey(
+    path string,
+    show bool,
+    hrp string,
+    chainid string,
+) (*ResponseAddr, error)
+```
+
+**Parameters:**
+- `path`: BIP44 derivation path (e.g., "m/44'/9000'/0'/0/0")
+- `show`: Display address on device screen for verification
+- `hrp`: Human-readable part for Bech32 encoding (use "lux" for default)
+- `chainid`: Chain identifier (empty string for P-Chain default)
+
+**Returns:**
+- `*ResponseAddr`: Contains public key, hash, and formatted address
+- `error`: Operation error if any
+
+**Example:**
+```go
+// Get P-Chain address
+addr, err := app.GetPubKey("m/44'/9000'/0'/0/0", true, "P-lux", "")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Address: %s\n", addr.Address)
+fmt.Printf("Public Key: %x\n", addr.PublicKey)
+```
+
+### GetAddress
+
+Simplified address derivation (wrapper for GetPubKey).
+
+```go
+func (l *LedgerLux) GetAddress(
+    path string,
+    show bool,
+) (*ResponseAddr, error)
+```
+
+**Parameters:**
+- `path`: BIP44 derivation path (e.g., "m/44'/9000'/0'/0/0")
+- `show`: Display address on device screen for verification
+
+**Returns:**
+- `*ResponseAddr`: Address information including public key
+- `error`: Operation error if any
+
+**Example:**
+```go
+addr, err := app.GetAddress("m/44'/9000'/0'/0/0", true)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Address: %s\n", addr.Address)
+fmt.Printf("Public Key: %x\n", addr.PublicKey)
+```
+
+### GetAddressWithHRP
+
+Derives an address with a custom Human-Readable Part (HRP).
+
+```go
+func (l *LedgerLux) GetAddressWithHRP(
+    path string,
+    hrp string,
+    chainID string,
+    show bool,
+) (*ResponseAddr, error)
+```
+
+**Parameters:**
+- `path`: BIP44 derivation path
+- `hrp`: Human-readable part for Bech32 encoding (default: "lux")
+- `chainID`: Chain identifier (empty for P-Chain)
+- `show`: Display on device screen
+
+**Returns:**
+- `*ResponseAddr`: Address with custom HRP
+- `error`: Operation error if any
+
+### GetExtendedPublicKey
+
+Retrieves the extended public key for a derivation path.
+
+```go
+func (l *LedgerLux) GetExtendedPublicKey(
+    path string,
+    show bool,
+) ([]byte, error)
+```
+
+**Parameters:**
+- `path`: BIP44 derivation path
+- `show`: Display on device screen
+
+**Returns:**
+- `[]byte`: Extended public key bytes
+- `error`: Operation error if any
+
+## Signing Operations
+
+### Sign
+
+Signs a transaction with multiple input paths and change paths support.
+
+```go
+func (l *LedgerLux) Sign(
+    pathPrefix string,
+    signingPaths []string,
+    message []byte,
+    changePaths []string,
+) (*ResponseSign, error)
+```
+
+**Parameters:**
+- `pathPrefix`: Common prefix for all paths (e.g., "m/44'/9000'/0'")
+- `signingPaths`: Path suffixes for inputs to sign (e.g., ["0/0", "0/1"])
+- `message`: Transaction bytes to sign
+- `changePaths`: Path suffixes for change addresses (can be nil)
+
+**Returns:**
+- `*ResponseSign`: Map of signatures indexed by path suffix
+- `error`: Operation error if any
+
+**Example:**
+```go
+// Sign transaction with multiple inputs
+response, err := app.Sign(
+    "m/44'/9000'/0'",           // Common prefix
+    []string{"0/0", "0/1"},     // Input paths
+    txBytes,                     // Transaction data
+    []string{"1/0"},            // Change path
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Access signatures
+for path, sig := range response.Signature {
+    fmt.Printf("Signature for %s: %x\n", path, sig)
+}
+```
+
+### SignHash
+
+Signs a pre-computed 32-byte hash with the specified paths.
+
+```go
+func (l *LedgerLux) SignHash(
+    pathPrefix string,
+    signingPaths []string,
+    hash []byte,
+) (*ResponseSign, error)
+```
+
+**Parameters:**
+- `pathPrefix`: Common prefix for all paths
+- `signingPaths`: Path suffixes for signing
+- `hash`: Exactly 32-byte hash to sign
+
+**Returns:**
+- `*ResponseSign`: Map of signatures indexed by path suffix
+- `error`: Operation error if any
+
+**APDU Details:**
+- CLA: 0x80
+- INS: 0x05 (SIGN_HASH)
+- Requires user confirmation on device
+
+### SignTransaction
+
+Simplified transaction signing (wrapper).
+
+```go
+func (l *LedgerLux) SignTransaction(
+    path string,
+    transaction []byte,
+    changePaths []string,
+) (*ResponseSign, error)
+```
+
+**Parameters:**
+- `path`: Signing key derivation path
+- `transaction`: Serialized transaction bytes
+- `changePaths`: Paths for change addresses (can be nil)
+
+**Returns:**
+- `*ResponseSign`: Transaction signature
+- `error`: Operation error if any
+
+**Example:**
+```go
+// Prepare transaction
+tx := prepareTransaction()
+txBytes := tx.Serialize()
+
+// Sign transaction
+sig, err := app.SignTransaction(
+    "m/44'/9000'/0'/0/0",
+    txBytes,
+    []string{"0/1"}, // Change path suffix
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Apply signature to transaction
+tx.SetSignature(sig.Signature)
+```
+
+### SignMessage
+
+Signs an arbitrary message (for authentication/verification).
+
+```go
+func (l *LedgerLux) SignMessage(
+    path string,
+    message []byte,
+) (*ResponseSign, error)
+```
+
+**Parameters:**
+- `path`: BIP44 derivation path
+- `message`: Message to sign
+
+**Returns:**
+- `*ResponseSign`: Message signature
+- `error`: Operation error if any
+
+### VerifyMultipleSignatures
+
+Verifies signatures against a message hash for multiple signing paths.
+
+```go
+func (l *LedgerLux) VerifyMultipleSignatures(
+    response ResponseSign,
+    messageHash []byte,
+    rootPath string,
+    signingPaths []string,
+    hrp string,
+    chainID string,
+) error
+```
+
+**Parameters:**
+- `response`: Response from Sign or SignHash operation
+- `messageHash`: The hash that was signed
+- `rootPath`: Root derivation path
+- `signingPaths`: Paths used for signing
+- `hrp`: Human-readable part for address
+- `chainID`: Chain identifier
+
+**Returns:**
+- `error`: nil if all signatures are valid, error otherwise
+
+**Example:**
+```go
+// After signing
+response, err := app.SignHash(pathPrefix, signingPaths, hash)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Verify all signatures
+err = app.VerifyMultipleSignatures(
+    *response,
+    hash,
+    pathPrefix,
+    signingPaths,
+    "lux",
+    "",
+)
+if err != nil {
+    log.Fatal("Signature verification failed:", err)
+}
+```
+
+## Ethereum Compatibility
+
+### SignEthTransaction
+
+Signs an Ethereum-compatible transaction for C-Chain.
+
+```go
+func (l *LedgerLux) SignEthTransaction(
+    path string,
+    transaction []byte,
+) (*ResponseSign, error)
+```
+
+**Parameters:**
+- `path`: Derivation path (uses coin type 60 for Ethereum)
+- `transaction`: RLP-encoded Ethereum transaction
+
+**Returns:**
+- `*ResponseSign`: Ethereum transaction signature (v, r, s)
+- `error`: Operation error if any
+
+**APDU Details:**
+- CLA: 0xE0 (Ethereum compatibility mode)
+- INS: 0x04
+
+## Utility Functions
+
+### CheckVersion
+
+Verifies that the app version meets minimum requirements.
+
+```go
+func CheckVersion(ver VersionInfo, req VersionInfo) error
+```
+
+**Parameters:**
+- `ver`: Current version from device
+- `req`: Required minimum version
+
+**Returns:**
+- `error`: Version error if requirements not met
+
+**Example:**
+```go
+version, _ := app.GetVersion()
+required := ledger.VersionInfo{Major: 0, Minor: 4, Patch: 0}
+
+if err := ledger.CheckVersion(version, required); err != nil {
+    log.Fatalf("Please update Lux app: %v", err)
+}
+```
+
+### SerializePath
+
+Converts a BIP44 path string to byte format for APDU.
+
+```go
+func SerializePath(path string) ([]byte, error)
+```
+
+**Parameters:**
+- `path`: BIP44 path string (e.g., "m/44'/9000'/0'/0/0")
+
+**Returns:**
+- `[]byte`: Serialized path bytes
+- `error`: Parse error if invalid path
+
+### SerializeChainID
+
+Serializes a chain ID for APDU transmission.
+
+```go
+func SerializeChainID(chainID string) ([]byte, error)
+```
+
+**Parameters:**
+- `chainID`: Base58-encoded chain ID
+
+**Returns:**
+- `[]byte`: Serialized chain ID
+- `error`: Decode error if invalid
+
+### SerializeHrp
+
+Serializes a human-readable part for addresses.
+
+```go
+func SerializeHrp(hrp string) ([]byte, error)
+```
+
+**Parameters:**
+- `hrp`: Human-readable part string
+
+**Returns:**
+- `[]byte`: Serialized HRP
+- `error`: Validation error if invalid characters
+
+## Error Codes
+
+### APDU Status Words
+
+| Code   | Name                       | Description                           |
+|--------|----------------------------|---------------------------------------|
+| 0x9000 | NoErrors                   | Success                              |
+| 0x9001 | DeviceIsBusy              | Device is processing another request |
+| 0x6400 | ExecutionError            | General execution error              |
+| 0x6700 | WrongLength               | Invalid data length                  |
+| 0x6802 | ErrorDerivingKeys         | Key derivation failed                |
+| 0x6982 | EmptyBuffer               | No data provided                     |
+| 0x6983 | OutputBufferTooSmall      | Response too large                   |
+| 0x6985 | ConditionsNotSatisfied    | Preconditions not met                |
+| 0x6986 | TransactionRejected       | User rejected on device              |
+| 0x6a80 | DataIsInvalid             | Invalid input data                   |
+| 0x6a81 | BadKeyHandle              | Invalid key reference                |
+| 0x6b00 | InvalidP1P2               | Invalid parameters                   |
+| 0x6d00 | InstructionNotSupported   | Unknown instruction                  |
+| 0x6e00 | AppDoesNotSeemToBeOpen    | App not open on device              |
+| 0x6f00 | UnknownError              | Unspecified error                    |
+| 0x6f01 | SignVerifyError           | Signature verification failed        |
+
+### Error Handling Example
+
+```go
+func handleLedgerError(err error) {
+    if err == nil {
+        return
+    }
+
+    switch {
+    case strings.Contains(err.Error(), "6985"):
+        log.Fatal("User rejected the operation on the device")
+    case strings.Contains(err.Error(), "6e00"):
+        log.Fatal("Please open the Lux app on your Ledger")
+    case strings.Contains(err.Error(), "6a80"):
+        log.Fatal("Invalid transaction data")
+    default:
+        log.Fatalf("Ledger error: %v", err)
+    }
+}
+```
+
+## Best Practices
+
+1. **Always check versions** before performing operations
+2. **Handle errors gracefully** with user-friendly messages
+3. **Close connections** when done using `defer app.Close()`
+4. **Validate paths** before sending to device
+5. **Use confirmation** for sensitive operations
+6. **Implement timeouts** for user confirmation requests
+7. **Cache public keys** to minimize device interactions
+8. **Test thoroughly** with both test and production modes
