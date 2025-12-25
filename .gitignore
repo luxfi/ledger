@@ -45,7 +45,9 @@
 *.pdb
 
 # Kernel Module Compile Results
-*.mod*
+*.ko
+*.mod.c
+.tmp_versions
 *.cmd
 .tmp_versions/
 modules.order
@@ -80,3 +82,11 @@ app/glyphs/glyphs.*
 hfuzz/hfuzz_workspace
 
 zemu/snapshots-tmp
+
+
+
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+GROK.md
+QWEN.md
