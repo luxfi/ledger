@@ -1,0 +1,277 @@
+---
+title: Getting Started
+description: Setup and installation guide for Lux Ledger integration
+---
+
+# Getting Started
+
+This guide will walk you through setting up the Lux Ledger integration in your project.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+1. **Go Environment**: Go 1.21 or later installed
+2. **Ledger Device**: A Ledger hardware wallet (Nano S/S Plus/X/Stax)
+3. **Lux Ledger App**: The Lux application installed on your Ledger device
+4. **USB Access**: Proper permissions to access USB devices on your system
+
+## Installation
+
+### Install the Library
+
+Add the Lux Ledger library to your Go project:
+
+```bash
+go get github.com/luxfi/ledger
+```
+
+### System Requirements
+
+#### Linux
+On Linux systems, you may need to add udev rules for Ledger devices:
+
+```bash
+# Create udev rules file
+sudo nano /etc/udev/rules.d/20-hw1.rules
+
+# Add the following lines:
+# Ledger Nano S
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="2c97", ATTRS{idProduct}=="0001", MODE="0660", GROUP="plugdev"
+# Ledger Nano X
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="2c97", ATTRS{idProduct}=="0004", MODE="0660", GROUP="plugdev"
+# Ledger Nano S Plus
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="2c97", ATTRS{idProduct}=="0005", MODE="0660", GROUP="plugdev"
+
+# Reload udev rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+
+# Add your user to plugdev group
+sudo usermod -aG plugdev $USER
+```
+
+#### macOS
+No special configuration required. The library will request USB access when needed.
+
+#### Windows
+Ensure you have the appropriate USB drivers installed. You may need to run your application with administrator privileges.
+
+## Installing the Lux App on Ledger
+
+### Using Ledger Live
+
+1. Open Ledger Live on your computer
+2. Connect your Ledger device via USB
+3. Navigate to "My Ledger" in the Manager
+4. Search for "Lux" in the app catalog
+5. Click "Install" to add the Lux app to your device
+
+### Manual Installation (Developer Mode)
+
+For developers or testing purposes:
+
+1. Enable Developer Mode in Ledger Live settings
+2. Connect your Ledger device
+3. Use the Ledger app loader tool to install the Lux app
+
+## Basic Connection
+
+Here's a simple example to verify your setup:
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+    "github.com/luxfi/ledger"
+)
+
+func main() {
+    // Attempt to find and connect to Ledger device
+    fmt.Println("Looking for Ledger device...")
+
+    app, err := ledger.FindLedgerLuxApp()
+    if err != nil {
+        log.Fatalf("Failed to connect to Ledger: %v", err)
+    }
+    defer app.Close()
+
+    fmt.Println("Successfully connected to Ledger!")
+
+    // Get and display app version
+    version, err := app.GetVersion()
+    if err != nil {
+        log.Fatalf("Failed to get version: %v", err)
+    }
+
+    fmt.Printf("Lux App Version: %s\n", version)
+    fmt.Printf("App Mode: %d\n", version.AppMode)
+
+    // Check minimum version requirements
+    requiredVersion := ledger.VersionInfo{Major: 0, Minor: 4, Patch: 0}
+    if err := ledger.CheckVersion(version, requiredVersion); err != nil {
+        log.Fatalf("Version check failed: %v", err)
+    }
+
+    fmt.Println("Version check passed!")
+}
+```
+
+## Derivation Paths
+
+The Lux Ledger app uses BIP44 standard derivation paths:
+
+### Standard Path Structure
+```
+m/44'/9000'/account'/change/index
+```
+
+Where:
+- `44'`: BIP44 standard
+- `9000'`: Lux coin type
+- `account'`: Account index (hardened)
+- `change`: 0 for external, 1 for internal
+- `index`: Address index
+
+### Common Paths
+
+```go
+// Primary account, first address
+primaryPath := "m/44'/9000'/0'/0/0"
+
+// Secondary account
+secondaryPath := "m/44'/9000'/1'/0/0"
+
+// Internal change address
+changePath := "m/44'/9000'/0'/1/0"
+```
+
+### Chain-Specific Paths
+
+Different chains may use different derivation paths:
+
+```go
+// P-Chain address
+pChainPath := "m/44'/9000'/0'/0/0"
+
+// X-Chain address
+xChainPath := "m/44'/9000'/0'/0/0"
+
+// C-Chain address (EVM-compatible)
+cChainPath := "m/44'/60'/0'/0/0"  // Uses Ethereum coin type
+```
+
+## Error Handling
+
+Always implement proper error handling when working with hardware wallets:
+
+```go
+func connectToLedger() (*ledger.LedgerLux, error) {
+    app, err := ledger.FindLedgerLuxApp()
+    if err != nil {
+        switch err.Error() {
+        case "[APDU_CODE_CLA_NOT_SUPPORTED] CLA not supported":
+            return nil, fmt.Errorf("please open the Lux app on your Ledger device")
+        case "no ledger device found":
+            return nil, fmt.Errorf("please connect your Ledger device via USB")
+        default:
+            return nil, fmt.Errorf("ledger connection failed: %w", err)
+        }
+    }
+
+    // Verify minimum version
+    version, err := app.GetVersion()
+    if err != nil {
+        app.Close()
+        return nil, fmt.Errorf("failed to get app version: %w", err)
+    }
+
+    minVersion := ledger.VersionInfo{Major: 0, Minor: 4, Patch: 0}
+    if err := ledger.CheckVersion(version, minVersion); err != nil {
+        app.Close()
+        return nil, fmt.Errorf("please update your Lux app: %w", err)
+    }
+
+    return app, nil
+}
+```
+
+## Testing Your Setup
+
+Run this test script to verify everything is working:
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+    "github.com/luxfi/ledger"
+)
+
+func main() {
+    // Connect to Ledger
+    app, err := ledger.FindLedgerLuxApp()
+    if err != nil {
+        log.Fatalf("Connection failed: %v", err)
+    }
+    defer app.Close()
+
+    // Test 1: Get Version
+    version, err := app.GetVersion()
+    if err != nil {
+        log.Fatalf("Version check failed: %v", err)
+    }
+    fmt.Printf("✓ Version: %s\n", version)
+
+    // Test 2: Get Wallet ID
+    walletID, err := app.GetWalletID()
+    if err != nil {
+        log.Fatalf("Wallet ID failed: %v", err)
+    }
+    fmt.Printf("✓ Wallet ID: %x\n", walletID)
+
+    // Test 3: Get Address (no display)
+    addr, err := app.GetAddress("m/44'/9000'/0'/0/0", false)
+    if err != nil {
+        log.Fatalf("Get address failed: %v", err)
+    }
+    fmt.Printf("✓ Address: %s\n", addr.Address)
+
+    fmt.Println("\nAll tests passed! Your Ledger is ready to use.")
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**"No Ledger device found"**
+- Ensure your Ledger is connected via USB
+- Check USB cable functionality
+- Try a different USB port
+- Verify USB permissions (Linux)
+
+**"CLA not supported"**
+- Open the Lux app on your Ledger device
+- Make sure you're not in the device menu
+
+**"Version required" error**
+- Update the Lux app on your Ledger device
+- Use Ledger Live to update to the latest version
+
+**Permission denied (Linux)**
+- Add udev rules as shown above
+- Add user to plugdev group
+- Logout and login again for group changes to take effect
+
+## Next Steps
+
+Now that you have the Lux Ledger integration set up, you can:
+
+- [Explore the API Reference](./api-reference) for detailed documentation
+- [Review Security Best Practices](./security) for safe usage
+- [Check out Examples](./examples) for common use cases
+- [Learn about Operations](./operations) for transaction signing

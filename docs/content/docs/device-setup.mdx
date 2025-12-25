@@ -1,0 +1,320 @@
+---
+title: Device Setup Guide
+description: Step-by-step guide for setting up your Ledger device for Lux
+---
+
+# Device Setup Guide
+
+This guide walks you through setting up your Ledger hardware wallet for use with the Lux blockchain.
+
+## Prerequisites
+
+Before starting, ensure you have:
+- A Ledger hardware wallet (Nano S/S Plus/X/Stax)
+- Ledger Live application installed on your computer
+- USB cable for connecting your device
+- About 15 minutes for initial setup
+
+## Initial Device Setup
+
+### Step 1: Unbox and Connect
+
+1. **Unbox your Ledger device** carefully
+2. **Connect to computer** using the provided USB cable
+3. **Power on** by pressing both buttons (Nano S/X) or following on-screen prompts (Stax)
+
+### Step 2: Configure New Device
+
+For a new device:
+
+1. **Choose Setup as New Device**
+   - Press right button to select "Set up as new device"
+   - Confirm with both buttons
+
+2. **Set PIN Code**
+   - Choose a 4-8 digit PIN
+   - Confirm PIN by entering it again
+   - **Important**: Never share your PIN with anyone
+
+3. **Write Down Recovery Phrase**
+   - Write down each of the 24 words in order
+   - Use the provided recovery sheet
+   - **Critical**: Store this securely - it's your only backup!
+
+4. **Verify Recovery Phrase**
+   - Confirm random words from your phrase
+   - This ensures you wrote them down correctly
+
+### Step 3: Install Ledger Live
+
+1. **Download Ledger Live** from [ledger.com](https://www.ledger.com/ledger-live)
+2. **Install and launch** the application
+3. **Select your device type** when prompted
+4. **Follow the setup wizard** to connect your device
+
+## Installing the Lux App
+
+### Method 1: Via Ledger Live (Recommended)
+
+1. **Open Ledger Live** on your computer
+2. **Connect your Ledger** device via USB
+3. **Navigate to Manager**
+   - Click "Manager" in the left sidebar
+   - Enter your PIN on the device when prompted
+
+4. **Search for Lux**
+   ```
+   Search: "Lux"
+   ```
+
+5. **Install the app**
+   - Click the "Install" button next to Lux
+   - Wait for installation to complete
+   - The app will appear on your device
+
+### Method 2: Developer Mode (Advanced)
+
+For testing or development versions:
+
+1. **Enable Developer Mode**
+   - In Ledger Live: Settings → Experimental Features
+   - Toggle "Developer mode" ON
+
+2. **Connect device** and open Manager
+
+3. **Install custom app** using developer tools
+
+## Verifying Installation
+
+### Check App Version
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+    "github.com/luxfi/ledger"
+)
+
+func main() {
+    app, err := ledger.FindLedgerLuxApp()
+    if err != nil {
+        log.Fatal("Cannot connect to Ledger:", err)
+    }
+    defer app.Close()
+
+    version, err := app.GetVersion()
+    if err != nil {
+        log.Fatal("Cannot get version:", err)
+    }
+
+    fmt.Printf("Lux App installed successfully!\n")
+    fmt.Printf("Version: %d.%d.%d\n",
+        version.Major, version.Minor, version.Patch)
+}
+```
+
+### Generate Test Address
+
+```go
+// Verify address generation works
+addr, err := app.GetPubKey("m/44'/9000'/0'/0/0", true, "lux", "")
+if err != nil {
+    log.Fatal("Cannot generate address:", err)
+}
+
+fmt.Printf("Your Lux address: %s\n", addr.Address)
+```
+
+## Device Security Settings
+
+### Auto-Lock Configuration
+
+1. **Open Settings** on your Ledger device
+2. **Navigate to Security**
+3. **Set Auto-Lock** timing:
+   - 1 minute (maximum security)
+   - 2 minutes (recommended)
+   - 5 minutes (convenience)
+   - 10 minutes (development)
+
+### PIN Shuffle
+
+Enable PIN shuffle for additional security:
+
+1. **Settings → Security**
+2. **Toggle PIN Shuffle** ON
+3. PIN digits will appear in random positions
+
+### Passphrase (Advanced)
+
+Add an additional passphrase for extra security:
+
+1. **Settings → Security**
+2. **Passphrase** → Attach to PIN
+3. Set a temporary passphrase
+4. Creates hidden wallet accessible only with passphrase
+
+## Multi-Device Setup
+
+### Managing Multiple Ledgers
+
+If you have multiple Ledger devices:
+
+```go
+func setupMultipleDevices() error {
+    devices := make(map[string]*ledger.LedgerLux)
+
+    // Find all connected devices
+    for i := 0; i < 3; i++ {
+        app, err := ledger.FindLedgerLuxApp()
+        if err != nil {
+            break
+        }
+
+        // Get unique wallet ID
+        walletID, err := app.GetWalletID()
+        if err != nil {
+            app.Close()
+            continue
+        }
+
+        id := fmt.Sprintf("%x", walletID)
+        devices[id] = app
+        fmt.Printf("Device %d: %s\n", i+1, id)
+    }
+
+    // Clean up
+    for _, device := range devices {
+        device.Close()
+    }
+
+    return nil
+}
+```
+
+### Cloning Configuration
+
+To set up identical devices (for backup):
+
+1. **Initialize both devices** with the same recovery phrase
+2. **Install the same apps** on both
+3. **Verify addresses match** on both devices
+
+## Platform-Specific Setup
+
+### macOS
+
+No special drivers needed. If prompted for permissions:
+
+1. **System Preferences → Security & Privacy**
+2. **Privacy tab → Input Monitoring**
+3. **Allow your application** access
+
+### Windows
+
+1. **Install drivers** if not detected automatically
+2. **Run as Administrator** if connection issues occur
+3. **Check Device Manager** for proper installation
+
+### Linux
+
+Set up udev rules for device access:
+
+```bash
+# Download and install rules
+wget -q -O - https://raw.githubusercontent.com/LedgerHQ/udev-rules/master/add_udev_rules.sh | sudo bash
+
+# Or manually:
+sudo nano /etc/udev/rules.d/20-hw1.rules
+
+# Add these lines:
+# Nano S
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="2c97", ATTRS{idProduct}=="0001", MODE="0660", GROUP="plugdev"
+# Nano X
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="2c97", ATTRS{idProduct}=="0004", MODE="0660", GROUP="plugdev"
+# Nano S Plus
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="2c97", ATTRS{idProduct}=="0005", MODE="0660", GROUP="plugdev"
+
+# Reload rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+
+# Add user to group
+sudo usermod -aG plugdev $USER
+
+# Logout and login for changes to take effect
+```
+
+## Firmware Updates
+
+### Checking Current Firmware
+
+1. **Open Ledger Live**
+2. **Manager → Device Information**
+3. **View firmware version**
+
+### Updating Firmware
+
+**Important**: Have your recovery phrase before updating!
+
+1. **Ledger Live** will notify you of updates
+2. **Follow the update wizard** carefully
+3. **Device may reset** - be ready to restore
+4. **Re-install apps** after firmware update
+
+## Troubleshooting Setup Issues
+
+### Device Not Recognized
+
+1. **Try different USB cable** (use data cable, not charge-only)
+2. **Try different USB port** (preferably USB 2.0)
+3. **Restart Ledger Live** and reconnect device
+4. **Update USB drivers** (Windows)
+5. **Check udev rules** (Linux)
+
+### App Installation Fails
+
+1. **Update Ledger Live** to latest version
+2. **Update device firmware** if available
+3. **Check available storage** on device
+4. **Uninstall unused apps** to free space
+5. **Try again later** if server issues
+
+### PIN Issues
+
+If you forget your PIN:
+1. **Enter wrong PIN 3 times** - device will reset
+2. **Restore using recovery phrase**
+3. **Set new PIN** during restoration
+
+## Best Practices
+
+### Security
+- **Never share** your recovery phrase or PIN
+- **Store recovery phrase** in secure location (not digital)
+- **Use PIN shuffle** for extra security
+- **Enable auto-lock** with short timeout
+- **Verify addresses** on device screen
+
+### Maintenance
+- **Regular firmware updates** for security patches
+- **Keep apps updated** for latest features
+- **Test recovery** with spare device
+- **Monitor official channels** for security advisories
+
+### Usage
+- **Close apps** when not in use
+- **Disconnect device** when done
+- **Verify transactions** carefully on device
+- **Keep device physically secure**
+
+## Next Steps
+
+Your Ledger device is now ready for use with Lux! Continue with:
+
+- [Getting Started](./getting-started) - Connect to Lux applications
+- [Transaction Signing](./transaction-signing) - Sign your first transaction
+- [Security Best Practices](./security) - Advanced security configuration
+- [Troubleshooting](./troubleshooting) - Resolve common issues

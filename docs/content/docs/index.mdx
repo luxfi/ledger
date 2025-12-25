@@ -1,0 +1,108 @@
+---
+title: Introduction
+description: Lux Ledger Hardware Wallet Integration Documentation
+---
+
+# Lux Ledger Hardware Wallet Integration
+
+The Lux Ledger integration provides secure hardware wallet support for the Lux blockchain, enabling users to safely store and manage their LUX tokens and interact with the Lux ecosystem using Ledger hardware devices.
+
+## Overview
+
+This library provides a Go interface for communicating with the Lux application on Ledger hardware wallets. It supports both the native Lux protocol and Ethereum-compatible operations for EVM chain interactions.
+
+## Features
+
+- **Secure Key Management**: Private keys never leave the hardware device
+- **Multi-Chain Support**: Works with P-Chain, X-Chain, and C-Chain
+- **Transaction Signing**: Sign transactions securely on the device
+- **Address Generation**: Derive addresses using BIP44 standard
+- **Message Signing**: Sign arbitrary messages for authentication
+- **EVM Compatibility**: Support for Ethereum-compatible operations on C-Chain
+- **Wallet ID Retrieval**: Get unique wallet identifiers
+- **Version Management**: Check and validate app versions
+
+## Supported Devices
+
+- Ledger Nano S
+- Ledger Nano S Plus
+- Ledger Nano X
+- Ledger Stax
+
+## Architecture
+
+The integration consists of several key components:
+
+### Communication Layer
+- **USB/Bluetooth Connection**: Direct communication with Ledger devices
+- **APDU Protocol**: Application Protocol Data Unit for command/response
+- **Transport Layer**: Abstraction over USB HID and Bluetooth LE
+
+### Protocol Support
+- **Native Lux Protocol**: CLA 0x80 for Lux-specific operations
+- **Ethereum Protocol**: CLA 0xE0 for EVM-compatible operations
+- **Dual Mode**: Seamless switching between protocols based on use case
+
+### Security Model
+- **Secure Element**: All cryptographic operations performed in hardware
+- **User Verification**: Physical button confirmation for sensitive operations
+- **Path Validation**: BIP44 standard path verification
+- **Version Checking**: Ensures compatibility with app versions
+
+## Quick Start
+
+### Installation
+
+```go
+go get github.com/luxfi/ledger
+```
+
+### Basic Usage
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/luxfi/ledger"
+)
+
+func main() {
+    // Find and connect to Ledger device
+    app, err := ledger.FindLedgerLuxApp()
+    if err != nil {
+        panic(err)
+    }
+    defer app.Close()
+
+    // Get app version
+    version, err := app.GetVersion()
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Ledger Lux App Version: %s\n", version)
+
+    // Get wallet ID
+    walletID, err := app.GetWalletID()
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Wallet ID: %x\n", walletID)
+
+    // Derive address
+    path := "m/44'/9000'/0'/0/0"
+    address, err := app.GetAddress(path, false)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Address: %s\n", address)
+}
+```
+
+## Next Steps
+
+- [Getting Started Guide](./getting-started) - Detailed setup instructions
+- [API Reference](./api-reference) - Complete API documentation
+- [Security Best Practices](./security) - Security considerations and recommendations
+- [Examples](./examples) - Code examples for common use cases
+- [Troubleshooting](./troubleshooting) - Common issues and solutions

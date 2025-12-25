@@ -4,9 +4,9 @@ go 1.25.5
 
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.5
+	github.com/luxfi/hid v0.9.2
 	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.11.1
-	github.com/zondax/hid v0.9.2
 	go.uber.org/zap v1.27.0
 )
 
