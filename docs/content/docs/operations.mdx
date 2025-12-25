@@ -1,0 +1,545 @@
+---
+title: Supported Operations
+description: Complete list of operations supported by the Lux Ledger integration
+---
+
+# Supported Operations
+
+This page provides a comprehensive overview of all operations supported by the Lux Ledger hardware wallet integration.
+
+## Operation Categories
+
+The Lux Ledger app supports two protocol modes:
+
+1. **Native Lux Protocol** (CLA 0x80) - Full Lux blockchain support
+2. **Ethereum Protocol** (CLA 0xE0) - EVM compatibility for C-Chain
+
+## Core Operations
+
+### Get Version (INS 0x00)
+
+Retrieves the application version and device information.
+
+```go
+func getVersionInfo(app *ledger.LedgerLux) error {
+    version, err := app.GetVersion()
+    if err != nil {
+        return err
+    }
+
+    fmt.Printf("App Version: %d.%d.%d\n",
+        version.Major, version.Minor, version.Patch)
+
+    // Check mode
+    if version.AppMode == 0xFF {
+        fmt.Println("Mode: Test/Debug")
+    } else {
+        fmt.Println("Mode: Production")
+    }
+
+    return nil
+}
+```
+
+**Response Data**:
+- App mode (production/test)
+- Major, minor, patch version
+- Device lock status
+- Target ID
+
+### Get Wallet ID (INS 0x01)
+
+Retrieves a unique identifier for the wallet.
+
+```go
+func getWalletIdentifier(app *ledger.LedgerLux) ([]byte, error) {
+    // Get wallet ID without user confirmation
+    walletID, err := app.GetWalletID()
+    if err != nil {
+        return nil, err
+    }
+
+    fmt.Printf("Wallet ID: %x\n", walletID)
+    return walletID, nil
+}
+```
+
+**Use Cases**:
+- Multi-wallet management
+- Device identification
+- Session tracking
+
+### Get Public Key (INS 0x02)
+
+Derives public keys and addresses for specified paths.
+
+```go
+func getPublicKeyOperations(app *ledger.LedgerLux) error {
+    // Basic address derivation
+    addr, err := app.GetPubKey(
+        "m/44'/9000'/0'/0/0",  // BIP44 path
+        false,                  // Don't show on device
+        "lux",                  // HRP (Human Readable Part)
+        "",                     // Chain ID (empty for default)
+    )
+    if err != nil {
+        return err
+    }
+
+    fmt.Printf("Address: %s\n", addr.Address)
+    fmt.Printf("Public Key: %x\n", addr.PublicKey)
+    fmt.Printf("Key Hash: %x\n", addr.Hash)
+
+    // With user confirmation on device
+    addrConfirm, err := app.GetPubKey(
+        "m/44'/9000'/0'/0/0",
+        true,  // Show on device for confirmation
+        "lux",
+        "",
+    )
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
+```
+
+**Parameters**:
+- **Path**: BIP44 derivation path
+- **Show**: Display on device for verification
+- **HRP**: Human-readable part for address encoding
+- **Chain ID**: Blockchain identifier
+
+### Get Extended Public Key (INS 0x03)
+
+Retrieves extended public keys for HD wallet operations.
+
+```go
+func getExtendedPublicKey(app *ledger.LedgerLux) error {
+    // Get xpub for account level
+    xpub, err := app.GetExtendedPubKey(
+        "m/44'/9000'/0'",  // Account level path
+        false,             // Don't show on device
+        "lux",            // HRP
+        "",               // Chain ID
+    )
+    if err != nil {
+        return err
+    }
+
+    fmt.Printf("Extended Public Key: %x\n", xpub.ExtendedKey)
+    fmt.Printf("Chain Code: %x\n", xpub.ChainCode)
+
+    // Can derive child addresses offline
+    for i := 0; i < 5; i++ {
+        childAddr := deriveChild(xpub, i)
+        fmt.Printf("Address %d: %s\n", i, childAddr)
+    }
+
+    return nil
+}
+```
+
+**Benefits**:
+- Derive multiple addresses offline
+- Improved privacy
+- Faster bulk address generation
+
+## Signing Operations
+
+### Sign Transaction (INS 0x04)
+
+Signs complete transactions with multiple inputs/outputs.
+
+```go
+func signTransactionOperation(app *ledger.LedgerLux) error {
+    // Prepare transaction data
+    tx := buildTransaction()
+
+    // Define signing configuration
+    pathPrefix := "m/44'/9000'/0'"
+    signingPaths := []string{
+        "0/0",  // First input
+        "0/1",  // Second input
+    }
+    changePaths := []string{
+        "1/0",  // Change address
+    }
+
+    // Sign transaction
+    response, err := app.Sign(
+        pathPrefix,
+        signingPaths,
+        tx,
+        changePaths,
+    )
+    if err != nil {
+        return err
+    }
+
+    // Process signatures
+    for path, sig := range response.Signature {
+        fmt.Printf("Path %s signature: %x\n", path, sig)
+    }
+
+    return nil
+}
+```
+
+**Features**:
+- Multiple input signing
+- Change address management
+- User confirmation on device
+- Transaction details display
+
+### Sign Hash (INS 0x05)
+
+Signs a pre-computed 32-byte hash.
+
+```go
+func signHashOperation(app *ledger.LedgerLux) error {
+    // Compute transaction hash
+    tx := buildTransaction()
+    hash := sha256.Sum256(tx)
+
+    // Sign the hash
+    response, err := app.SignHash(
+        "m/44'/9000'/0'",
+        []string{"0/0"},
+        hash[:],
+    )
+    if err != nil {
+        return err
+    }
+
+    fmt.Printf("Hash: %x\n", hash)
+    fmt.Printf("Signature: %x\n", response.Signature["0/0"])
+
+    return nil
+}
+```
+
+**Use Cases**:
+- Pre-validated transactions
+- Off-chain message signing
+- Blind signing (with warnings)
+
+### Sign Message (INS 0x06)
+
+Signs arbitrary messages for authentication.
+
+```go
+func signMessageOperation(app *ledger.LedgerLux) error {
+    message := "Authenticate with Lux DApp"
+
+    // Add message prefix to prevent replay
+    prefixedMsg := formatMessage(message)
+
+    // Sign message
+    response, err := app.Sign(
+        "m/44'/9000'/0'",
+        []string{"0/0"},
+        prefixedMsg,
+        nil,
+    )
+    if err != nil {
+        return err
+    }
+
+    // Create signature proof
+    proof := MessageProof{
+        Message:   message,
+        Signature: response.Signature["0/0"],
+        PublicKey: getPublicKey(app, "m/44'/9000'/0'/0/0"),
+    }
+
+    return nil
+}
+```
+
+## Chain-Specific Operations
+
+### P-Chain Operations
+
+Platform chain operations for validators and delegators.
+
+```go
+func pChainOperations(app *ledger.LedgerLux) error {
+    chainID := "11111111111111111111111111111111LpoYY"
+    hrp := "P-lux"
+
+    // Get P-Chain address
+    addr, err := app.GetPubKey(
+        "m/44'/9000'/0'/0/0",
+        true,
+        hrp,
+        chainID,
+    )
+    if err != nil {
+        return err
+    }
+
+    // Sign validator transaction
+    validatorTx := buildAddValidatorTx()
+    response, err := app.Sign(
+        "m/44'/9000'/0'",
+        []string{"0/0"},
+        validatorTx,
+        nil,
+    )
+
+    // Sign delegation transaction
+    delegationTx := buildAddDelegatorTx()
+    response, err = app.Sign(
+        "m/44'/9000'/0'",
+        []string{"0/0"},
+        delegationTx,
+        nil,
+    )
+
+    return nil
+}
+```
+
+**Supported P-Chain Operations**:
+- Add Validator
+- Add Delegator
+- Add Subnet Validator
+- Create Subnet
+- Create Blockchain
+- Import/Export AVAX
+
+### X-Chain Operations
+
+Asset exchange chain operations.
+
+```go
+func xChainOperations(app *ledger.LedgerLux) error {
+    chainID := "2oYMBNV4eNHyqk2fjjV5nVQLDbtmNJzq5s3qs3Lo6ftnC6FByM"
+    hrp := "X-lux"
+
+    // Get X-Chain address
+    addr, err := app.GetPubKey(
+        "m/44'/9000'/0'/0/0",
+        true,
+        hrp,
+        chainID,
+    )
+
+    // Sign asset creation
+    createAssetTx := buildCreateAssetTx()
+    response, err := app.Sign(
+        "m/44'/9000'/0'",
+        []string{"0/0"},
+        createAssetTx,
+        nil,
+    )
+
+    // Sign asset transfer (UTXO-based)
+    transferTx := buildTransferTx()
+    inputPaths := []string{"0/0", "0/1"}  // Multiple UTXOs
+    changePaths := []string{"1/0"}        // Change
+
+    response, err = app.Sign(
+        "m/44'/9000'/0'",
+        inputPaths,
+        transferTx,
+        changePaths,
+    )
+
+    return nil
+}
+```
+
+**Supported X-Chain Operations**:
+- Create Asset
+- Mint Asset
+- Transfer Assets
+- Import/Export
+- NFT Operations
+
+### C-Chain Operations
+
+EVM-compatible contract chain operations.
+
+```go
+func cChainOperations(app *ledger.LedgerLux) error {
+    // C-Chain uses Ethereum protocol (CLA 0xE0)
+    // Different derivation path
+    ethPath := "m/44'/60'/0'/0/0"
+
+    // Get Ethereum-format address
+    addr, err := app.GetPubKey(
+        ethPath,
+        true,
+        "",  // No HRP for Ethereum addresses
+        "",  // No chain ID needed
+    )
+
+    // Sign EVM transaction
+    evmTx := buildEVMTransaction()
+
+    // For C-Chain, use Ethereum-compatible signing
+    response, err := app.SignEVM(
+        ethPath,
+        evmTx,
+    )
+
+    // Sign smart contract interaction
+    contractCall := buildContractCall()
+    response, err = app.SignEVM(
+        ethPath,
+        contractCall,
+    )
+
+    return nil
+}
+```
+
+**Supported C-Chain Operations**:
+- ETH transfers
+- ERC20 token operations
+- Smart contract deployment
+- Contract interactions
+- DeFi operations
+
+## Advanced Operations
+
+### Multi-Signature Support
+
+```go
+func multiSigOperations(app *ledger.LedgerLux) error {
+    // Prepare multi-sig transaction
+    tx := buildMultiSigTx()
+
+    // Multiple signing paths for different keys
+    signingPaths := []string{
+        "0/0",  // Key 1
+        "0/1",  // Key 2
+        "0/2",  // Key 3
+    }
+
+    // Collect signatures
+    response, err := app.Sign(
+        "m/44'/9000'/0'",
+        signingPaths,
+        tx,
+        nil,
+    )
+
+    // Verify threshold met
+    if len(response.Signature) < 2 {
+        return fmt.Errorf("insufficient signatures")
+    }
+
+    return nil
+}
+```
+
+### Batch Operations
+
+```go
+func batchOperations(app *ledger.LedgerLux) error {
+    transactions := [][]byte{
+        buildTx1(),
+        buildTx2(),
+        buildTx3(),
+    }
+
+    var signatures []ledger.ResponseSign
+
+    for i, tx := range transactions {
+        fmt.Printf("Signing transaction %d/%d\n", i+1, len(transactions))
+
+        response, err := app.Sign(
+            "m/44'/9000'/0'",
+            []string{"0/0"},
+            tx,
+            nil,
+        )
+        if err != nil {
+            return fmt.Errorf("failed tx %d: %w", i, err)
+        }
+
+        signatures = append(signatures, *response)
+
+        // Pause between operations
+        time.Sleep(500 * time.Millisecond)
+    }
+
+    return nil
+}
+```
+
+## Protocol Specifications
+
+### APDU Commands
+
+| INS | Name | CLA | Description |
+|-----|------|-----|-------------|
+| 0x00 | GET_VERSION | 0x80 | Get app version |
+| 0x01 | GET_WALLET_ID | 0x80 | Get wallet identifier |
+| 0x02 | GET_PUBLIC_KEY | 0x80 | Derive public key |
+| 0x03 | GET_EXTENDED_PUBLIC_KEY | 0x80 | Get xpub |
+| 0x04 | SIGN | 0x80 | Sign transaction |
+| 0x05 | SIGN_HASH | 0x80 | Sign hash |
+| 0x06 | SIGN_MESSAGE | 0x80 | Sign message |
+| 0x0A | GET_ETH_ADDRESS | 0xE0 | Get Ethereum address |
+| 0x04 | SIGN_ETH_TX | 0xE0 | Sign EVM transaction |
+| 0x08 | SIGN_ETH_MESSAGE | 0xE0 | Sign ETH message |
+
+### Return Codes
+
+| Code | Status | Description |
+|------|--------|-------------|
+| 0x9000 | SUCCESS | Operation completed |
+| 0x6985 | DENIED | User rejected |
+| 0x6A80 | INVALID_DATA | Malformed data |
+| 0x6B00 | INVALID_P1P2 | Wrong parameters |
+| 0x6D00 | NOT_SUPPORTED | Operation not supported |
+| 0x6E00 | CLA_NOT_SUPPORTED | Wrong app or CLA |
+
+## Security Considerations
+
+### Operation Limits
+
+```go
+const (
+    MAX_BIP44_PATH_LEN = 6
+    MAX_TX_SIZE        = 32768  // 32KB
+    MAX_MSG_SIZE       = 1024   // 1KB
+    MAX_SIGNATURES     = 10
+    TIMEOUT_SIGNING    = 60 * time.Second
+)
+```
+
+### Validation Requirements
+
+All operations include:
+1. Path validation
+2. Data size checks
+3. User confirmation (for sensitive ops)
+4. Signature verification
+5. Version compatibility checks
+
+## Operation Matrix
+
+| Operation | P-Chain | X-Chain | C-Chain | Subnets |
+|-----------|---------|---------|---------|---------|
+| Get Address | ✅ | ✅ | ✅ | ✅ |
+| Sign Transaction | ✅ | ✅ | ✅ | ✅ |
+| Sign Message | ✅ | ✅ | ✅ | ✅ |
+| Multi-Sig | ✅ | ✅ | ❌ | ✅ |
+| Import/Export | ✅ | ✅ | ✅ | ❌ |
+| Validator Ops | ✅ | ❌ | ❌ | ✅ |
+| Asset Creation | ❌ | ✅ | ✅* | ✅ |
+| Smart Contracts | ❌ | ❌ | ✅ | ✅* |
+
+*Through ERC20/ERC721 standards or subnet-specific implementations
+
+## Next Steps
+
+- [Transaction Signing](./transaction-signing) - Detailed signing workflows
+- [Troubleshooting](./troubleshooting) - Common issues and solutions
+- [API Reference](./api-reference) - Complete API documentation

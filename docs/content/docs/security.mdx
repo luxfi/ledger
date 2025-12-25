@@ -1,0 +1,399 @@
+---
+title: Security Best Practices
+description: Security considerations and best practices for Lux Ledger integration
+---
+
+# Security Best Practices
+
+When integrating Ledger hardware wallets with your Lux application, security should be your top priority. This guide covers essential security considerations and best practices.
+
+## Core Security Principles
+
+### 1. Private Keys Never Leave the Device
+
+The fundamental security model of hardware wallets ensures that private keys are:
+- Generated within the secure element
+- Never exposed to the host computer
+- Never transmitted over USB or Bluetooth
+- Only used for cryptographic operations within the device
+
+### 2. User Verification Required
+
+All sensitive operations require physical confirmation on the device:
+- Transaction signing
+- Message signing
+- Address display for verification
+- Extended public key export
+
+### 3. Secure Communication
+
+All communication between the host and device uses:
+- APDU protocol with command/response structure
+- Encrypted transport for Bluetooth connections
+- USB HID protocol with exclusive device access
+
+## Implementation Security
+
+### Path Validation
+
+Always validate derivation paths to prevent unauthorized access:
+
+```go
+func validatePath(path string) error {
+    // Ensure path starts with 'm'
+    if !strings.HasPrefix(path, "m") {
+        return errors.New("invalid path: must start with 'm'")
+    }
+
+    // Parse path components
+    parts := strings.Split(path, "/")
+    if len(parts) < 3 || len(parts) > 6 {
+        return errors.New("invalid path depth")
+    }
+
+    // Validate Lux coin type (9000')
+    if len(parts) >= 3 {
+        if parts[2] != "9000'" {
+            return errors.New("invalid coin type for Lux")
+        }
+    }
+
+    // Check hardened derivation where required
+    for i := 1; i <= 3 && i < len(parts); i++ {
+        if !strings.HasSuffix(parts[i], "'") {
+            return fmt.Errorf("path component %d must be hardened", i)
+        }
+    }
+
+    return nil
+}
+```
+
+### Transaction Verification
+
+Implement thorough transaction verification before signing:
+
+```go
+func verifyTransaction(tx Transaction) error {
+    // Verify transaction structure
+    if err := tx.Validate(); err != nil {
+        return fmt.Errorf("invalid transaction: %w", err)
+    }
+
+    // Check amounts
+    if tx.Amount <= 0 {
+        return errors.New("invalid amount")
+    }
+
+    // Verify recipient address
+    if !isValidAddress(tx.Recipient) {
+        return errors.New("invalid recipient address")
+    }
+
+    // Check fee reasonableness
+    maxFee := tx.Amount * 0.1 // Max 10% fee
+    if tx.Fee > maxFee {
+        return errors.New("excessive transaction fee")
+    }
+
+    // Verify nonce/sequence
+    if tx.Nonce <= lastNonce {
+        return errors.New("invalid nonce")
+    }
+
+    return nil
+}
+```
+
+### Address Display Verification
+
+Always offer address verification on device screen for critical operations:
+
+```go
+func receivePayment(app *ledger.LedgerLux) (string, error) {
+    // Generate address with display on device
+    response, err := app.GetAddress("m/44'/9000'/0'/0/0", true)
+    if err != nil {
+        return "", err
+    }
+
+    fmt.Println("Please verify the address on your Ledger screen")
+    fmt.Printf("Address shown: %s\n", response.Address)
+    fmt.Println("Confirm this matches the device display")
+
+    // Wait for user confirmation
+    var confirm string
+    fmt.Print("Does the address match? (yes/no): ")
+    fmt.Scanln(&confirm)
+
+    if confirm != "yes" {
+        return "", errors.New("address verification failed")
+    }
+
+    return response.Address, nil
+}
+```
+
+## Attack Vectors and Mitigations
+
+### 1. Man-in-the-Middle Attacks
+
+**Risk**: Attacker intercepts communication between app and device
+
+**Mitigations**:
+- Verify device authenticity through attestation
+- Use secure channels for sensitive data
+- Implement mutual authentication
+
+```go
+func verifyDeviceAuthenticity(app *ledger.LedgerLux) error {
+    // Get device attestation
+    version, err := app.GetVersion()
+    if err != nil {
+        return err
+    }
+
+    // Verify app signature (example)
+    if version.AppMode == 0xFF {
+        return errors.New("warning: test mode app detected")
+    }
+
+    return nil
+}
+```
+
+### 2. Phishing Attacks
+
+**Risk**: Fake applications requesting signatures
+
+**Mitigations**:
+- Always display transaction details on device
+- Educate users about verification
+- Implement transaction limits
+
+```go
+func secureSign(app *ledger.LedgerLux, tx Transaction) error {
+    // Display transaction details
+    fmt.Println("\nTransaction Details:")
+    fmt.Printf("To: %s\n", tx.Recipient)
+    fmt.Printf("Amount: %d\n", tx.Amount)
+    fmt.Printf("Fee: %d\n", tx.Fee)
+    fmt.Println("\nPlease verify on your Ledger device")
+
+    // Sign with user confirmation
+    sig, err := app.SignTransaction(
+        "m/44'/9000'/0'/0/0",
+        tx.Serialize(),
+        nil,
+    )
+
+    if err != nil {
+        if strings.Contains(err.Error(), "6985") {
+            return errors.New("transaction rejected by user")
+        }
+        return err
+    }
+
+    return nil
+}
+```
+
+### 3. Malicious Software
+
+**Risk**: Compromised host computer
+
+**Mitigations**:
+- Hardware wallet isolation
+- Transaction verification on device
+- Regular security updates
+
+### 4. Supply Chain Attacks
+
+**Risk**: Compromised devices or firmware
+
+**Mitigations**:
+- Purchase from official sources
+- Verify device integrity
+- Check firmware authenticity
+- Reset device before first use
+
+## Secure Coding Practices
+
+### Error Handling
+
+Never expose sensitive information in error messages:
+
+```go
+// Bad: Exposes internal state
+if err != nil {
+    return fmt.Errorf("failed to sign with key at path %s: %v", path, err)
+}
+
+// Good: Generic error message
+if err != nil {
+    log.Printf("Signing error: %v", err) // Log privately
+    return errors.New("transaction signing failed")
+}
+```
+
+### Memory Management
+
+Clear sensitive data from memory after use:
+
+```go
+func handleSensitiveData(data []byte) {
+    defer func() {
+        // Clear the buffer
+        for i := range data {
+            data[i] = 0
+        }
+    }()
+
+    // Use data...
+}
+```
+
+### Timeout Implementation
+
+Implement timeouts for user interactions:
+
+```go
+func signWithTimeout(app *ledger.LedgerLux, tx []byte) error {
+    done := make(chan error, 1)
+
+    go func() {
+        _, err := app.SignTransaction("m/44'/9000'/0'/0/0", tx, nil)
+        done <- err
+    }()
+
+    select {
+    case err := <-done:
+        return err
+    case <-time.After(60 * time.Second):
+        return errors.New("signing timeout - no user response")
+    }
+}
+```
+
+## Audit Checklist
+
+### Pre-Deployment Security Review
+
+- [ ] All paths are validated before use
+- [ ] Transaction amounts are verified
+- [ ] Address display verification is implemented
+- [ ] Error messages don't leak sensitive data
+- [ ] Timeouts are implemented for user actions
+- [ ] Device authenticity is verified
+- [ ] Connection is properly closed after use
+- [ ] No private keys in logs or debug output
+- [ ] Transaction limits are enforced
+- [ ] User education materials are provided
+
+### Regular Security Practices
+
+- [ ] Keep Ledger firmware updated
+- [ ] Update app to latest version
+- [ ] Monitor for security advisories
+- [ ] Regular code audits
+- [ ] Penetration testing
+- [ ] User feedback monitoring
+
+## Security Configuration
+
+### Production Settings
+
+```go
+type SecurityConfig struct {
+    // Require device confirmation
+    RequireConfirmation bool
+
+    // Maximum transaction amount
+    MaxTransactionAmount uint64
+
+    // Minimum app version
+    MinAppVersion VersionInfo
+
+    // Session timeout
+    SessionTimeout time.Duration
+
+    // Rate limiting
+    MaxSignaturesPerMinute int
+
+    // Path restrictions
+    AllowedPaths []string
+}
+
+var ProductionConfig = SecurityConfig{
+    RequireConfirmation:    true,
+    MaxTransactionAmount:   1000000000, // 1000 LUX
+    MinAppVersion:         VersionInfo{Major: 0, Minor: 4, Patch: 0},
+    SessionTimeout:        5 * time.Minute,
+    MaxSignaturesPerMinute: 10,
+    AllowedPaths: []string{
+        "m/44'/9000'/0'/0/*",
+        "m/44'/9000'/0'/1/*",
+    },
+}
+```
+
+## Incident Response
+
+### If Compromise is Suspected
+
+1. **Immediately disconnect** the Ledger device
+2. **Transfer funds** to a new address from a secure computer
+3. **Reset the device** to factory settings
+4. **Generate new seed phrase**
+5. **Audit all recent transactions**
+6. **Report to security team**
+
+### Security Contact
+
+For security issues related to the Lux Ledger integration:
+- Email: security@luxfi.com
+- PGP Key: [Available on website]
+- Bug Bounty Program: [Link to program]
+
+## User Education
+
+### Key Points to Communicate
+
+1. **Never share your seed phrase**
+2. **Always verify addresses on device screen**
+3. **Check transaction details before confirming**
+4. **Update firmware regularly**
+5. **Buy devices only from official sources**
+6. **Reset new devices before use**
+7. **Use a secure computer for transactions**
+
+### Warning Signs of Attacks
+
+Users should be alert to:
+- Unexpected transaction requests
+- Addresses that don't match device display
+- Requests for seed phrase
+- Unusual error messages
+- Device behaving differently
+- Unofficial software updates
+
+## Compliance and Standards
+
+The Lux Ledger integration follows:
+- **BIP32**: Hierarchical Deterministic Wallets
+- **BIP39**: Mnemonic code for generating keys
+- **BIP44**: Multi-Account Hierarchy
+- **FIDO U2F**: Universal 2nd Factor authentication
+- **Common Criteria EAL5+**: Security certification
+
+## Summary
+
+Security in hardware wallet integration requires:
+1. Understanding the security model
+2. Implementing proper validation
+3. Following secure coding practices
+4. Educating users
+5. Regular security audits
+6. Incident response planning
+
+Remember: The hardware wallet is only as secure as the software that interfaces with it. Always prioritize security over convenience.

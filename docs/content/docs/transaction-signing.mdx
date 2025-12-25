@@ -1,0 +1,449 @@
+---
+title: Transaction Signing
+description: Complete guide to signing transactions with Ledger hardware wallets
+---
+
+# Transaction Signing
+
+This guide covers the complete transaction signing workflow for Lux blockchain transactions using Ledger hardware wallets.
+
+## Overview
+
+Transaction signing with Ledger ensures that private keys never leave the secure hardware device. The device displays transaction details for user confirmation before signing.
+
+## Signing Workflow
+
+### 1. Prepare Transaction
+
+Before signing, prepare your transaction data:
+
+```go
+// Example transaction structure
+type Transaction struct {
+    ChainID     string
+    Inputs      []Input
+    Outputs     []Output
+    Nonce       uint64
+    GasLimit    uint64
+    GasPrice    *big.Int
+}
+```
+
+### 2. Serialize Transaction
+
+Serialize the transaction according to Lux protocol:
+
+```go
+func serializeTransaction(tx Transaction) ([]byte, error) {
+    var buffer bytes.Buffer
+
+    // Write chain ID
+    buffer.Write([]byte(tx.ChainID))
+
+    // Write inputs
+    for _, input := range tx.Inputs {
+        buffer.Write(input.Serialize())
+    }
+
+    // Write outputs
+    for _, output := range tx.Outputs {
+        buffer.Write(output.Serialize())
+    }
+
+    return buffer.Bytes(), nil
+}
+```
+
+### 3. Sign Transaction
+
+Use the Ledger device to sign the transaction:
+
+```go
+func signTransaction(app *ledger.LedgerLux, tx []byte) (*ledger.ResponseSign, error) {
+    // Define signing paths
+    pathPrefix := "m/44'/9000'/0'"
+    signingPaths := []string{
+        "0/0",  // Primary address
+        "0/1",  // Change address (if needed)
+    }
+
+    // Sign the transaction
+    response, err := app.Sign(pathPrefix, signingPaths, tx, nil)
+    if err != nil {
+        return nil, fmt.Errorf("signing failed: %w", err)
+    }
+
+    return response, nil
+}
+```
+
+## Multi-Signature Transactions
+
+For transactions requiring multiple signatures:
+
+### P2SH Multi-Sig
+
+```go
+func signMultiSig(app *ledger.LedgerLux, tx []byte, requiredSigs int) error {
+    pathPrefix := "m/44'/9000'/0'"
+
+    // Define multiple signing paths for multi-sig
+    signingPaths := make([]string, requiredSigs)
+    for i := 0; i < requiredSigs; i++ {
+        signingPaths[i] = fmt.Sprintf("0/%d", i)
+    }
+
+    // Sign with multiple paths
+    response, err := app.Sign(pathPrefix, signingPaths, tx, nil)
+    if err != nil {
+        return fmt.Errorf("multi-sig signing failed: %w", err)
+    }
+
+    // Verify all signatures
+    for path, sig := range response.Signature {
+        fmt.Printf("Signature for path %s: %x\n", path, sig)
+    }
+
+    return nil
+}
+```
+
+### Threshold Signatures
+
+For threshold signature schemes (M-of-N):
+
+```go
+func thresholdSign(apps []*ledger.LedgerLux, tx []byte, threshold int) ([][]byte, error) {
+    var signatures [][]byte
+
+    for i := 0; i < threshold; i++ {
+        if i >= len(apps) {
+            return nil, fmt.Errorf("not enough Ledger devices for threshold")
+        }
+
+        path := fmt.Sprintf("m/44'/9000'/0'/0/%d", i)
+        resp, err := apps[i].Sign(path, []string{"0/0"}, tx, nil)
+        if err != nil {
+            return nil, fmt.Errorf("device %d signing failed: %w", i, err)
+        }
+
+        signatures = append(signatures, resp.Signature["0/0"])
+    }
+
+    return signatures, nil
+}
+```
+
+## Chain-Specific Signing
+
+### P-Chain (Platform Chain)
+
+P-Chain transactions for staking and validation:
+
+```go
+func signPChainTx(app *ledger.LedgerLux) error {
+    // P-Chain specific parameters
+    chainID := "11111111111111111111111111111111LpoYY" // P-Chain ID
+    hrp := "P-lux"
+
+    // Get address for display
+    addr, err := app.GetPubKey("m/44'/9000'/0'/0/0", true, hrp, chainID)
+    if err != nil {
+        return err
+    }
+
+    fmt.Printf("Signing from P-Chain address: %s\n", addr.Address)
+
+    // Prepare staking transaction
+    stakingTx := preparePChainStakingTx()
+
+    // Sign transaction
+    response, err := app.Sign("m/44'/9000'/0'", []string{"0/0"}, stakingTx, nil)
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
+```
+
+### X-Chain (Exchange Chain)
+
+X-Chain asset transfer transactions:
+
+```go
+func signXChainTx(app *ledger.LedgerLux) error {
+    // X-Chain specific parameters
+    chainID := "2oYMBNV4eNHyqk2fjjV5nVQLDbtmNJzq5s3qs3Lo6ftnC6FByM" // X-Chain ID
+    hrp := "X-lux"
+
+    // Multiple inputs may require multiple signatures
+    inputPaths := []string{"0/0", "0/1", "0/2"}
+    changePath := []string{"1/0"} // Internal change address
+
+    // Prepare UTXO-based transaction
+    utxoTx := prepareXChainUTXOTx()
+
+    // Sign with change paths
+    response, err := app.Sign("m/44'/9000'/0'", inputPaths, utxoTx, changePath)
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
+```
+
+### C-Chain (Contract Chain / EVM)
+
+For EVM-compatible transactions on C-Chain:
+
+```go
+func signCChainTx(app *ledger.LedgerLux) error {
+    // C-Chain uses Ethereum-compatible signing (CLA 0xE0)
+    // This requires special handling
+
+    // Use Ethereum derivation path for C-Chain
+    ethPath := "m/44'/60'/0'/0/0"
+
+    // Prepare EVM transaction
+    evmTx := types.NewTransaction(
+        nonce,
+        toAddress,
+        value,
+        gasLimit,
+        gasPrice,
+        data,
+    )
+
+    // Serialize for signing
+    signer := types.NewEIP155Signer(chainID)
+    hash := signer.Hash(evmTx)
+
+    // Sign using Ethereum protocol
+    // Note: This uses CLA 0xE0 internally
+    response, err := app.SignHash("m/44'/60'/0'", []string{"0/0"}, hash.Bytes())
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
+```
+
+## Advanced Signing Features
+
+### Blind Signing
+
+For complex transactions where full details cannot be displayed:
+
+```go
+func blindSign(app *ledger.LedgerLux, txHash []byte) error {
+    // WARNING: Blind signing should only be used when necessary
+    // The device will show a warning to the user
+
+    if len(txHash) != 32 {
+        return fmt.Errorf("hash must be 32 bytes")
+    }
+
+    // Sign hash directly (blind signing)
+    response, err := app.SignHash("m/44'/9000'/0'", []string{"0/0"}, txHash)
+    if err != nil {
+        return fmt.Errorf("blind signing failed: %w", err)
+    }
+
+    fmt.Printf("WARNING: Transaction was blind signed\n")
+    fmt.Printf("Hash: %x\n", txHash)
+    fmt.Printf("Signature: %x\n", response.Signature["0/0"])
+
+    return nil
+}
+```
+
+### Batch Signing
+
+Sign multiple transactions efficiently:
+
+```go
+func batchSign(app *ledger.LedgerLux, transactions [][]byte) ([]ledger.ResponseSign, error) {
+    var responses []ledger.ResponseSign
+
+    for i, tx := range transactions {
+        fmt.Printf("Signing transaction %d/%d...\n", i+1, len(transactions))
+
+        response, err := app.Sign("m/44'/9000'/0'", []string{"0/0"}, tx, nil)
+        if err != nil {
+            return nil, fmt.Errorf("failed to sign tx %d: %w", i, err)
+        }
+
+        responses = append(responses, *response)
+
+        // Brief pause between signings to avoid overwhelming the device
+        time.Sleep(500 * time.Millisecond)
+    }
+
+    return responses, nil
+}
+```
+
+### Message Signing
+
+Sign arbitrary messages for authentication:
+
+```go
+func signMessage(app *ledger.LedgerLux, message string) error {
+    // Prepare message with prefix to prevent transaction replay
+    prefix := []byte("\x1ALux Signed Message:\n")
+    msgLen := []byte(fmt.Sprintf("%d", len(message)))
+    fullMessage := append(prefix, msgLen...)
+    fullMessage = append(fullMessage, []byte(message)...)
+
+    // Hash the message
+    hash := sha256.Sum256(fullMessage)
+
+    // Sign the hash
+    response, err := app.SignHash("m/44'/9000'/0'", []string{"0/0"}, hash[:])
+    if err != nil {
+        return err
+    }
+
+    fmt.Printf("Message: %s\n", message)
+    fmt.Printf("Signature: %x\n", response.Signature["0/0"])
+
+    return nil
+}
+```
+
+## Signature Verification
+
+Always verify signatures after signing:
+
+```go
+func verifySignature(app *ledger.LedgerLux, response ledger.ResponseSign, txHash []byte) error {
+    // Get public key for verification
+    addr, err := app.GetPubKey("m/44'/9000'/0'/0/0", false, "lux", "")
+    if err != nil {
+        return err
+    }
+
+    // Parse public key
+    pubKey, err := btcec.ParsePubKey(addr.PublicKey)
+    if err != nil {
+        return err
+    }
+
+    // Verify each signature
+    for path, sigBytes := range response.Signature {
+        sig, err := ecdsa.ParseSignature(sigBytes)
+        if err != nil {
+            return fmt.Errorf("invalid signature for path %s: %w", path, err)
+        }
+
+        if !sig.Verify(txHash, pubKey) {
+            return fmt.Errorf("signature verification failed for path %s", path)
+        }
+
+        fmt.Printf("✓ Signature verified for path %s\n", path)
+    }
+
+    return nil
+}
+```
+
+## Error Handling
+
+Common signing errors and solutions:
+
+```go
+func handleSigningError(err error) {
+    switch {
+    case strings.Contains(err.Error(), "rejected"):
+        fmt.Println("User rejected the transaction on the device")
+
+    case strings.Contains(err.Error(), "timeout"):
+        fmt.Println("Signing timed out - please confirm on device within 60 seconds")
+
+    case strings.Contains(err.Error(), "invalid data"):
+        fmt.Println("Transaction data is malformed")
+
+    case strings.Contains(err.Error(), "locked"):
+        fmt.Println("Device is locked - please unlock and try again")
+
+    default:
+        fmt.Printf("Signing error: %v\n", err)
+    }
+}
+```
+
+## Security Best Practices
+
+1. **Always Verify on Device**: Check transaction details shown on Ledger screen
+2. **Use Correct Derivation Paths**: Ensure paths match your wallet configuration
+3. **Validate Addresses**: Verify recipient addresses before signing
+4. **Check Network**: Confirm you're signing for the correct chain
+5. **Limit Blind Signing**: Only use when absolutely necessary
+6. **Secure Communication**: Use encrypted channels when transmitting signatures
+7. **Timeout Handling**: Set appropriate timeouts for user confirmation
+
+## Complete Example
+
+Full transaction signing workflow:
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+    "github.com/luxfi/ledger"
+)
+
+func main() {
+    // Connect to Ledger
+    app, err := ledger.FindLedgerLuxApp()
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer app.Close()
+
+    // Verify version
+    version, err := app.GetVersion()
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("App version: %d.%d.%d\n", version.Major, version.Minor, version.Patch)
+
+    // Get address for confirmation
+    addr, err := app.GetPubKey("m/44'/9000'/0'/0/0", true, "P-lux", "")
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("Signing from: %s\n", addr.Address)
+
+    // Prepare transaction
+    tx := prepareTransaction()
+
+    // Sign transaction
+    fmt.Println("Please confirm transaction on your Ledger device...")
+    response, err := app.Sign("m/44'/9000'/0'", []string{"0/0"}, tx, nil)
+    if err != nil {
+        handleSigningError(err)
+        return
+    }
+
+    // Verify signature
+    txHash := sha256.Sum256(tx)
+    err = verifySignature(app, *response, txHash[:])
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Println("Transaction signed successfully!")
+}
+```
+
+## Next Steps
+
+- [Troubleshooting Guide](./troubleshooting) - Common issues and solutions
+- [Security Best Practices](./security) - In-depth security considerations
+- [API Reference](./api-reference) - Complete API documentation
