@@ -288,7 +288,7 @@ func Test_UserSign(t *testing.T) {
 		0x00, 0x00, 0x00, 0x04,
 		0x00, 0x00, 0x00, 0x00}
 
-	response, err := userApp.Sign(rootPath, signers, simpleTransferData, nil)
+	response, err := userApp.SignFull(rootPath, signers, simpleTransferData, nil)
 	if err != nil {
 		t.Fatalf("Detected error, err: %s\n", err.Error())
 	}
@@ -327,7 +327,7 @@ func Test_UserSignHash(t *testing.T) {
 	h.Write([]byte(message))
 	hash := h.Sum(nil)
 
-	response, err := userApp.SignHash(rootPath, signingList, hash)
+	response, err := userApp.SignHashFull(rootPath, signingList, hash)
 	if err != nil {
 		t.Fatalf("Detected error, err: %s\n", err.Error())
 	}
