@@ -22,6 +22,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
+	"github.com/luxfi/ids"
 )
 
 // FindLedgerLuxApp FindLedgerLuxUserApp finds a Lux user app running in a ledger device
@@ -54,10 +55,10 @@ func FindLedgerLuxApp() (_ *LedgerLux, rerr error) {
 	return app, err
 }
 
-// NewLedger creates a new LedgerAdapter that implements the keychain.Ledger interface.
+// NewLedger creates a new LedgerLux that implements the keychain.Ledger interface.
 // This is the recommended way to get a Ledger for use with the keychain package.
-func NewLedger() (*LedgerAdapter, error) {
-	return NewLedgerAdapter()
+func NewLedger() (*LedgerLux, error) {
+	return FindLedgerLuxApp()
 }
 
 // Close closes a connection with the Lux user app
@@ -149,7 +150,7 @@ func (ledger *LedgerLux) GetPubKey(path string, show bool, hrp string, chainid s
 	return &ResponseAddr{PublicKey: publicKey, Hash: hash, Address: address}, nil
 }
 
-func (ledger *LedgerLux) Sign(pathPrefix string, signingPaths []string, message []byte, changePaths []string) (*ResponseSign, error) {
+func (ledger *LedgerLux) SignFull(pathPrefix string, signingPaths []string, message []byte, changePaths []string) (*ResponseSign, error) {
 	paths := signingPaths
 	if changePaths != nil {
 		paths = append(paths, changePaths...)
@@ -206,7 +207,7 @@ func (ledger *LedgerLux) Sign(pathPrefix string, signingPaths []string, message 
 	return SignAndCollect(signingPaths, ledger)
 }
 
-func (ledger *LedgerLux) SignHash(pathPrefix string, signingPaths []string, hash []byte) (*ResponseSign, error) {
+func (ledger *LedgerLux) SignHashFull(pathPrefix string, signingPaths []string, hash []byte) (*ResponseSign, error) {
 	if len(hash) != HASH_LEN {
 		return nil, errors.New("wrong hash size")
 	}
@@ -317,10 +318,8 @@ func VerifySignature(pubkey, hash, signature []byte) bool {
 // These methods provide a simple interface for the keychain package.
 // ============================================================================
 
-import "github.com/luxfi/ids"
-
 const (
-	rootPath       = "m/44'/9000'/0'" // Standard Lux derivation path
+	rootPath       = "m/44'/60'/0'" // Ethereum derivation path (used by Lux)
 	defaultHRP     = "lux"
 	defaultChainID = "2q9e4r6Mu3U68nU1fYjgbR6JvwrRx36CohpAX5UQxse55x1Q5"
 )
@@ -354,10 +353,10 @@ func (l *LedgerLux) GetAddresses(addressIndices []uint32) ([]ids.ShortID, error)
 	return addresses, nil
 }
 
-// SignHashAtIndex signs a hash at the given address index (implements keychain.Ledger as SignHash)
-func (l *LedgerLux) SignHashAtIndex(hash []byte, addressIndex uint32) ([]byte, error) {
+// SignHash signs a hash at the given address index (implements keychain.Ledger)
+func (l *LedgerLux) SignHash(hash []byte, addressIndex uint32) ([]byte, error) {
 	path := fmt.Sprintf("%d'", addressIndex)
-	resp, err := l.SignHash(rootPath, []string{path}, hash)
+	resp, err := l.SignHashFull(rootPath, []string{path}, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -367,10 +366,10 @@ func (l *LedgerLux) SignHashAtIndex(hash []byte, addressIndex uint32) ([]byte, e
 	return nil, fmt.Errorf("no signature returned for path %s", path)
 }
 
-// SignAtIndex signs a message at the given address index (implements keychain.Ledger as Sign)
-func (l *LedgerLux) SignAtIndex(message []byte, addressIndex uint32) ([]byte, error) {
+// Sign signs a message at the given address index (implements keychain.Ledger)
+func (l *LedgerLux) Sign(message []byte, addressIndex uint32) ([]byte, error) {
 	path := fmt.Sprintf("%d'", addressIndex)
-	resp, err := l.Sign(rootPath, []string{path}, message, nil)
+	resp, err := l.SignFull(rootPath, []string{path}, message, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +385,7 @@ func (l *LedgerLux) SignTransaction(rawUnsignedHash []byte, addressIndices []uin
 	for i, idx := range addressIndices {
 		signingPaths[i] = fmt.Sprintf("%d'", idx)
 	}
-	resp, err := l.SignHash(rootPath, signingPaths, rawUnsignedHash)
+	resp, err := l.SignHashFull(rootPath, signingPaths, rawUnsignedHash)
 	if err != nil {
 		return nil, err
 	}
