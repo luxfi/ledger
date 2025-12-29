@@ -54,10 +54,10 @@ func FindLedgerLuxApp() (_ *LedgerLux, rerr error) {
 	return app, err
 }
 
-// NewLedger is an alias for FindLedgerLuxApp for backward compatibility.
-// Deprecated: Use FindLedgerLuxApp instead.
-func NewLedger() (*LedgerLux, error) {
-	return FindLedgerLuxApp()
+// NewLedger creates a new LedgerAdapter that implements the keychain.Ledger interface.
+// This is the recommended way to get a Ledger for use with the keychain package.
+func NewLedger() (*LedgerAdapter, error) {
+	return NewLedgerAdapter()
 }
 
 // Close closes a connection with the Lux user app
@@ -310,4 +310,98 @@ func VerifySignature(pubkey, hash, signature []byte) bool {
 		return false
 	}
 	return sig.Verify(hash, key)
+}
+
+// ============================================================================
+// keychain.Ledger interface implementation
+// These methods provide a simple interface for the keychain package.
+// ============================================================================
+
+import "github.com/luxfi/ids"
+
+const (
+	rootPath       = "m/44'/9000'/0'" // Standard Lux derivation path
+	defaultHRP     = "lux"
+	defaultChainID = "2q9e4r6Mu3U68nU1fYjgbR6JvwrRx36CohpAX5UQxse55x1Q5"
+)
+
+// Address returns the address at the given index (implements keychain.Ledger)
+func (l *LedgerLux) Address(displayHRP string, addressIndex uint32) (ids.ShortID, error) {
+	path := fmt.Sprintf("%s/%d'", rootPath, addressIndex)
+	hrp := displayHRP
+	if hrp == "" {
+		hrp = defaultHRP
+	}
+	resp, err := l.GetPubKey(path, false, hrp, defaultChainID)
+	if err != nil {
+		return ids.ShortID{}, err
+	}
+	var shortID ids.ShortID
+	copy(shortID[:], resp.Hash)
+	return shortID, nil
+}
+
+// GetAddresses returns the addresses for multiple indices (implements keychain.Ledger)
+func (l *LedgerLux) GetAddresses(addressIndices []uint32) ([]ids.ShortID, error) {
+	addresses := make([]ids.ShortID, len(addressIndices))
+	for i, idx := range addressIndices {
+		addr, err := l.Address(defaultHRP, idx)
+		if err != nil {
+			return nil, err
+		}
+		addresses[i] = addr
+	}
+	return addresses, nil
+}
+
+// SignHashAtIndex signs a hash at the given address index (implements keychain.Ledger as SignHash)
+func (l *LedgerLux) SignHashAtIndex(hash []byte, addressIndex uint32) ([]byte, error) {
+	path := fmt.Sprintf("%d'", addressIndex)
+	resp, err := l.SignHash(rootPath, []string{path}, hash)
+	if err != nil {
+		return nil, err
+	}
+	if sig, ok := resp.Signature[path]; ok {
+		return sig, nil
+	}
+	return nil, fmt.Errorf("no signature returned for path %s", path)
+}
+
+// SignAtIndex signs a message at the given address index (implements keychain.Ledger as Sign)
+func (l *LedgerLux) SignAtIndex(message []byte, addressIndex uint32) ([]byte, error) {
+	path := fmt.Sprintf("%d'", addressIndex)
+	resp, err := l.Sign(rootPath, []string{path}, message, nil)
+	if err != nil {
+		return nil, err
+	}
+	if sig, ok := resp.Signature[path]; ok {
+		return sig, nil
+	}
+	return nil, fmt.Errorf("no signature returned for path %s", path)
+}
+
+// SignTransaction signs a transaction hash with multiple addresses (implements keychain.Ledger)
+func (l *LedgerLux) SignTransaction(rawUnsignedHash []byte, addressIndices []uint32) ([][]byte, error) {
+	signingPaths := make([]string, len(addressIndices))
+	for i, idx := range addressIndices {
+		signingPaths[i] = fmt.Sprintf("%d'", idx)
+	}
+	resp, err := l.SignHash(rootPath, signingPaths, rawUnsignedHash)
+	if err != nil {
+		return nil, err
+	}
+	sigs := make([][]byte, len(addressIndices))
+	for i, path := range signingPaths {
+		if sig, ok := resp.Signature[path]; ok {
+			sigs[i] = sig
+		} else {
+			return nil, fmt.Errorf("no signature for path %s", path)
+		}
+	}
+	return sigs, nil
+}
+
+// Disconnect closes the ledger connection (implements keychain.Ledger)
+func (l *LedgerLux) Disconnect() error {
+	return l.Close()
 }
