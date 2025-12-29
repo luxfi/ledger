@@ -54,6 +54,12 @@ func FindLedgerLuxApp() (_ *LedgerLux, rerr error) {
 	return app, err
 }
 
+// NewLedger is an alias for FindLedgerLuxApp for backward compatibility.
+// Deprecated: Use FindLedgerLuxApp instead.
+func NewLedger() (*LedgerLux, error) {
+	return FindLedgerLuxApp()
+}
+
 // Close closes a connection with the Lux user app
 func (ledger *LedgerLux) Close() error {
 	return ledger.api.Close()
