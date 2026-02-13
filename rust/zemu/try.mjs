@@ -2,7 +2,7 @@ import TransportNodeHid from '@ledgerhq/hw-transport-node-hid'
 import ledger_logs from '@ledgerhq/logs'
 import LuxApp from '@zondax/ledger-lux-app'
 
-const APP_DERIVATION = "m/44'/9000'/0'/0/0"
+const APP_DERIVATION = "m/44'/60'/0'/0/0"
 
 async function main() {
     const transport = await TransportNodeHid.default.open();

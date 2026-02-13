@@ -202,7 +202,7 @@ impl Viewable for ExtendedPubkeyUI {
                 title[..title_content.len()].copy_from_slice(title_content);
 
                 let path = if self.is_avm {
-                    pic_str!("m/44'/9000'/0'")
+                    pic_str!("m/44'/60'/0'")
                 } else {
                     pic_str!("m/44'/60'/0'")
                 };

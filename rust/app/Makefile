@@ -61,7 +61,7 @@ ifeq ($(COIN),LUX)
 # Main app configuration
 DEFINES += APP_STANDARD
 APPNAME = "Lux"
-APPPATH = "44'/9000'" --path "44'/60'"
+APPPATH = "44'/60'"
 else
 define error_message
 COIN value not supported: [$(COIN)]

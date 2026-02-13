@@ -144,7 +144,7 @@ func (l *LedgerLux) GetPubKey(
 ```
 
 **Parameters:**
-- `path`: BIP44 derivation path (e.g., "m/44'/9000'/0'/0/0")
+- `path`: BIP44 derivation path (e.g., "m/44'/60'/0'/0/0")
 - `show`: Display address on device screen for verification
 - `hrp`: Human-readable part for Bech32 encoding (use "lux" for default)
 - `chainid`: Chain identifier (empty string for P-Chain default)
@@ -156,7 +156,7 @@ func (l *LedgerLux) GetPubKey(
 **Example:**
 ```go
 // Get P-Chain address
-addr, err := app.GetPubKey("m/44'/9000'/0'/0/0", true, "P-lux", "")
+addr, err := app.GetPubKey("m/44'/60'/0'/0/0", true, "P-lux", "")
 if err != nil {
     log.Fatal(err)
 }
@@ -176,7 +176,7 @@ func (l *LedgerLux) GetAddress(
 ```
 
 **Parameters:**
-- `path`: BIP44 derivation path (e.g., "m/44'/9000'/0'/0/0")
+- `path`: BIP44 derivation path (e.g., "m/44'/60'/0'/0/0")
 - `show`: Display address on device screen for verification
 
 **Returns:**
@@ -185,7 +185,7 @@ func (l *LedgerLux) GetAddress(
 
 **Example:**
 ```go
-addr, err := app.GetAddress("m/44'/9000'/0'/0/0", true)
+addr, err := app.GetAddress("m/44'/60'/0'/0/0", true)
 if err != nil {
     log.Fatal(err)
 }
@@ -251,7 +251,7 @@ func (l *LedgerLux) Sign(
 ```
 
 **Parameters:**
-- `pathPrefix`: Common prefix for all paths (e.g., "m/44'/9000'/0'")
+- `pathPrefix`: Common prefix for all paths (e.g., "m/44'/60'/0'")
 - `signingPaths`: Path suffixes for inputs to sign (e.g., ["0/0", "0/1"])
 - `message`: Transaction bytes to sign
 - `changePaths`: Path suffixes for change addresses (can be nil)
@@ -264,7 +264,7 @@ func (l *LedgerLux) Sign(
 ```go
 // Sign transaction with multiple inputs
 response, err := app.Sign(
-    "m/44'/9000'/0'",           // Common prefix
+    "m/44'/60'/0'",           // Common prefix
     []string{"0/0", "0/1"},     // Input paths
     txBytes,                     // Transaction data
     []string{"1/0"},            // Change path
@@ -334,7 +334,7 @@ txBytes := tx.Serialize()
 
 // Sign transaction
 sig, err := app.SignTransaction(
-    "m/44'/9000'/0'/0/0",
+    "m/44'/60'/0'/0/0",
     txBytes,
     []string{"0/1"}, // Change path suffix
 )
@@ -474,7 +474,7 @@ func SerializePath(path string) ([]byte, error)
 ```
 
 **Parameters:**
-- `path`: BIP44 path string (e.g., "m/44'/9000'/0'/0/0")
+- `path`: BIP44 path string (e.g., "m/44'/60'/0'/0/0")
 
 **Returns:**
 - `[]byte`: Serialized path bytes

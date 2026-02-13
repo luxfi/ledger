@@ -71,7 +71,7 @@ func Test_UserGetPublicKey(t *testing.T) {
 	}
 	defer userApp.Close()
 
-	path := "m/44'/9000'/0'/0/0"
+	path := "m/44'/60'/0'/0/0"
 	hrp := ""
 	chainID := ""
 	showAddress := false
@@ -178,7 +178,7 @@ func Test_UserPK_HDPaths(t *testing.T) {
 	}
 
 	for i := uint32(0); i < 10; i++ {
-		path := fmt.Sprintf("m/44'/9000'/0'/0/%d", i)
+		path := fmt.Sprintf("m/44'/60'/0'/0/%d", i)
 
 		addr, err := userApp.GetPubKey(path, showAddress, hrp, chainID)
 		if err != nil {
@@ -225,7 +225,7 @@ func Test_UserSign(t *testing.T) {
 	}
 	defer userApp.Close()
 
-	rootPath := "m/44'/9000'/0'"
+	rootPath := "m/44'/60'/0'"
 	signers := []string{"0/0", "5/8"}
 
 	simpleTransferData := []byte{
@@ -319,7 +319,7 @@ func Test_UserSignHash(t *testing.T) {
 	}
 	defer userApp.Close()
 
-	rootPath := "m/44'/9000'/0'"
+	rootPath := "m/44'/60'/0'"
 	signingList := []string{"0/0", "4/8"}
 
 	message := "LuxApp"
