@@ -61,7 +61,7 @@ Use the Ledger device to sign the transaction:
 ```go
 func signTransaction(app *ledger.LedgerLux, tx []byte) (*ledger.ResponseSign, error) {
     // Define signing paths
-    pathPrefix := "m/44'/9000'/0'"
+    pathPrefix := "m/44'/60'/0'"
     signingPaths := []string{
         "0/0",  // Primary address
         "0/1",  // Change address (if needed)
@@ -85,7 +85,7 @@ For transactions requiring multiple signatures:
 
 ```go
 func signMultiSig(app *ledger.LedgerLux, tx []byte, requiredSigs int) error {
-    pathPrefix := "m/44'/9000'/0'"
+    pathPrefix := "m/44'/60'/0'"
 
     // Define multiple signing paths for multi-sig
     signingPaths := make([]string, requiredSigs)
@@ -121,7 +121,7 @@ func thresholdSign(apps []*ledger.LedgerLux, tx []byte, threshold int) ([][]byte
             return nil, fmt.Errorf("not enough Ledger devices for threshold")
         }
 
-        path := fmt.Sprintf("m/44'/9000'/0'/0/%d", i)
+        path := fmt.Sprintf("m/44'/60'/0'/0/%d", i)
         resp, err := apps[i].Sign(path, []string{"0/0"}, tx, nil)
         if err != nil {
             return nil, fmt.Errorf("device %d signing failed: %w", i, err)
@@ -147,7 +147,7 @@ func signPChainTx(app *ledger.LedgerLux) error {
     hrp := "P-lux"
 
     // Get address for display
-    addr, err := app.GetPubKey("m/44'/9000'/0'/0/0", true, hrp, chainID)
+    addr, err := app.GetPubKey("m/44'/60'/0'/0/0", true, hrp, chainID)
     if err != nil {
         return err
     }
@@ -158,7 +158,7 @@ func signPChainTx(app *ledger.LedgerLux) error {
     stakingTx := preparePChainStakingTx()
 
     // Sign transaction
-    response, err := app.Sign("m/44'/9000'/0'", []string{"0/0"}, stakingTx, nil)
+    response, err := app.Sign("m/44'/60'/0'", []string{"0/0"}, stakingTx, nil)
     if err != nil {
         return err
     }
@@ -185,7 +185,7 @@ func signXChainTx(app *ledger.LedgerLux) error {
     utxoTx := prepareXChainUTXOTx()
 
     // Sign with change paths
-    response, err := app.Sign("m/44'/9000'/0'", inputPaths, utxoTx, changePath)
+    response, err := app.Sign("m/44'/60'/0'", inputPaths, utxoTx, changePath)
     if err != nil {
         return err
     }
@@ -247,7 +247,7 @@ func blindSign(app *ledger.LedgerLux, txHash []byte) error {
     }
 
     // Sign hash directly (blind signing)
-    response, err := app.SignHash("m/44'/9000'/0'", []string{"0/0"}, txHash)
+    response, err := app.SignHash("m/44'/60'/0'", []string{"0/0"}, txHash)
     if err != nil {
         return fmt.Errorf("blind signing failed: %w", err)
     }
@@ -271,7 +271,7 @@ func batchSign(app *ledger.LedgerLux, transactions [][]byte) ([]ledger.ResponseS
     for i, tx := range transactions {
         fmt.Printf("Signing transaction %d/%d...\n", i+1, len(transactions))
 
-        response, err := app.Sign("m/44'/9000'/0'", []string{"0/0"}, tx, nil)
+        response, err := app.Sign("m/44'/60'/0'", []string{"0/0"}, tx, nil)
         if err != nil {
             return nil, fmt.Errorf("failed to sign tx %d: %w", i, err)
         }
@@ -302,7 +302,7 @@ func signMessage(app *ledger.LedgerLux, message string) error {
     hash := sha256.Sum256(fullMessage)
 
     // Sign the hash
-    response, err := app.SignHash("m/44'/9000'/0'", []string{"0/0"}, hash[:])
+    response, err := app.SignHash("m/44'/60'/0'", []string{"0/0"}, hash[:])
     if err != nil {
         return err
     }
@@ -321,7 +321,7 @@ Always verify signatures after signing:
 ```go
 func verifySignature(app *ledger.LedgerLux, response ledger.ResponseSign, txHash []byte) error {
     // Get public key for verification
-    addr, err := app.GetPubKey("m/44'/9000'/0'/0/0", false, "lux", "")
+    addr, err := app.GetPubKey("m/44'/60'/0'/0/0", false, "lux", "")
     if err != nil {
         return err
     }
@@ -414,7 +414,7 @@ func main() {
     fmt.Printf("App version: %d.%d.%d\n", version.Major, version.Minor, version.Patch)
 
     // Get address for confirmation
-    addr, err := app.GetPubKey("m/44'/9000'/0'/0/0", true, "P-lux", "")
+    addr, err := app.GetPubKey("m/44'/60'/0'/0/0", true, "P-lux", "")
     if err != nil {
         log.Fatal(err)
     }
@@ -425,7 +425,7 @@ func main() {
 
     // Sign transaction
     fmt.Println("Please confirm transaction on your Ledger device...")
-    response, err := app.Sign("m/44'/9000'/0'", []string{"0/0"}, tx, nil)
+    response, err := app.Sign("m/44'/60'/0'", []string{"0/0"}, tx, nil)
     if err != nil {
         handleSigningError(err)
         return
