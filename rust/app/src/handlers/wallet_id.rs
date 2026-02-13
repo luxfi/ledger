@@ -59,7 +59,7 @@ impl ApduHandler for WalletId {
             sys::crypto::bip32::BIP32Path::<2>::new([BIP32_PATH_ROOT_0, BIP32_PATH_ROOT_1])
                 .apdu_unwrap();
 
-        //compute public key Sha256HMAC with path "44'/9000'"
+        //compute public key Sha256HMAC with path "44'/60'"
         // and key 'wallet-id'
         // the hmac is truncated so the public key is not recoverable
         // since the hmac is done with a known key

@@ -125,12 +125,12 @@ The Lux Ledger app uses BIP44 standard derivation paths:
 
 ### Standard Path Structure
 ```
-m/44'/9000'/account'/change/index
+m/44'/60'/account'/change/index
 ```
 
 Where:
 - `44'`: BIP44 standard
-- `9000'`: Lux coin type
+- `60'`: Lux coin type (Ethereum standard)
 - `account'`: Account index (hardened)
 - `change`: 0 for external, 1 for internal
 - `index`: Address index
@@ -139,13 +139,13 @@ Where:
 
 ```go
 // Primary account, first address
-primaryPath := "m/44'/9000'/0'/0/0"
+primaryPath := "m/44'/60'/0'/0/0"
 
 // Secondary account
-secondaryPath := "m/44'/9000'/1'/0/0"
+secondaryPath := "m/44'/60'/1'/0/0"
 
 // Internal change address
-changePath := "m/44'/9000'/0'/1/0"
+changePath := "m/44'/60'/0'/1/0"
 ```
 
 ### Chain-Specific Paths
@@ -154,10 +154,10 @@ Different chains may use different derivation paths:
 
 ```go
 // P-Chain address
-pChainPath := "m/44'/9000'/0'/0/0"
+pChainPath := "m/44'/60'/0'/0/0"
 
 // X-Chain address
-xChainPath := "m/44'/9000'/0'/0/0"
+xChainPath := "m/44'/60'/0'/0/0"
 
 // C-Chain address (EVM-compatible)
 cChainPath := "m/44'/60'/0'/0/0"  // Uses Ethereum coin type
@@ -234,7 +234,7 @@ func main() {
     fmt.Printf("✓ Wallet ID: %x\n", walletID)
 
     // Test 3: Get Address (no display)
-    addr, err := app.GetAddress("m/44'/9000'/0'/0/0", false)
+    addr, err := app.GetAddress("m/44'/60'/0'/0/0", false)
     if err != nil {
         log.Fatalf("Get address failed: %v", err)
     }

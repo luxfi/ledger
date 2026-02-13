@@ -90,7 +90,7 @@ func main() {
     fmt.Printf("Wallet ID: %x\n", walletID)
 
     // Derive address
-    path := "m/44'/9000'/0'/0/0"
+    path := "m/44'/60'/0'/0/0"
     address, err := app.GetAddress(path, false)
     if err != nil {
         panic(err)

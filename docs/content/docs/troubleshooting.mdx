@@ -204,7 +204,7 @@ func signWithTimeout(app *ledger.LedgerLux, tx []byte, timeout time.Duration) er
     resultChan := make(chan result, 1)
 
     go func() {
-        resp, err := app.Sign("m/44'/9000'/0'", []string{"0/0"}, tx, nil)
+        resp, err := app.Sign("m/44'/60'/0'", []string{"0/0"}, tx, nil)
         resultChan <- result{resp, err}
     }()
 
@@ -288,8 +288,8 @@ func validatePath(path string) error {
         if i == 0 && num != 44 {
             fmt.Println("Warning: Non-standard purpose (expected 44)")
         }
-        if i == 1 && num != 9000 && num != 60 {
-            fmt.Println("Warning: Non-standard coin type (expected 9000 for Lux)")
+        if i == 1 && num != 60 {
+            fmt.Println("Warning: Non-standard coin type (expected 60 for Lux)")
         }
     }
 
@@ -304,22 +304,15 @@ func validatePath(path string) error {
 **Common Valid Paths**:
 ```go
 var commonPaths = map[string]string{
-    "P-Chain Primary":    "m/44'/9000'/0'/0/0",
-    "X-Chain Primary":    "m/44'/9000'/0'/0/0",
-    "C-Chain Primary":    "m/44'/60'/0'/0/0",    // Ethereum-compatible
-    "Change Address":     "m/44'/9000'/0'/1/0",
-    "Second Account":     "m/44'/9000'/1'/0/0",
+    "P-Chain Primary":    "m/44'/60'/0'/0/0",
+    "X-Chain Primary":    "m/44'/60'/0'/0/0",
+    "C-Chain Primary":    "m/44'/60'/0'/0/0",
+    "Change Address":     "m/44'/60'/0'/1/0",
+    "Second Account":     "m/44'/60'/1'/0/0",
 }
 
 func suggestPath(chainType string) string {
-    switch chainType {
-    case "P", "X":
-        return "m/44'/9000'/0'/0/0"
-    case "C":
-        return "m/44'/60'/0'/0/0"
-    default:
-        return "m/44'/9000'/0'/0/0"
-    }
+    return "m/44'/60'/0'/0/0"
 }
 ```
 
@@ -477,7 +470,7 @@ func dumpDeviceInfo(app *ledger.LedgerLux) {
 
     // Test addresses
     testPaths := []string{
-        "m/44'/9000'/0'/0/0",
+        "m/44'/60'/0'/0/0",
         "m/44'/60'/0'/0/0",
     }
 
