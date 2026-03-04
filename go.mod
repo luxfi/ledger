@@ -1,6 +1,6 @@
 module github.com/luxfi/ledger
 
-go 1.25.5
+go 1.26
 
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.5
