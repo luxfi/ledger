@@ -319,7 +319,7 @@ func VerifySignature(pubkey, hash, signature []byte) bool {
 // ============================================================================
 
 const (
-	rootPath       = "m/44'/60'/0'" // Ethereum derivation path (used by Lux)
+	rootPath       = "m/44'/9000'/0'" // Lux P/X-Chain derivation path (coin type 9000)
 	defaultHRP     = "lux"
 	defaultChainID = "2q9e4r6Mu3U68nU1fYjgbR6JvwrRx36CohpAX5UQxse55x1Q5"
 )
