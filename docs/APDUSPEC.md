@@ -283,6 +283,30 @@ storing the confirmed hash for signing later via [INS_SIGN_HASH], skipping the "
 |----------|-----------------|-------------|---------------------------------------|
 | SW1-SW2  | byte (2)        | Return code | see list of return codes              |
 
+## Multi-chain dispatch (today)
+
+The current firmware exposes two CLA bytes:
+
+| CLA  | Family                | Used by                              |
+|------|-----------------------|--------------------------------------|
+| 0x80 | Lux native operations | Lux P/X chains (validator/delegator) |
+| 0xE0 | Ethereum-compat       | Lux C-Chain, Hanzo, Zoo, Pars        |
+
+Every EVM-compat chain in the family signs through `CLA=0xE0`. The
+network is identified by the EIP-155 `chain_id` field inside the
+serialized RLP transaction body — the firmware does not have to know
+about each chain individually.
+
+The Go client picks the derivation path via
+`github.com/luxfi/ledger`:
+
+```go
+path, err := ledger.BIP44PathForName("hanzo", 0, 0, 0)
+// "m/44'/60'/0'/0/0" — used by SignFull / SignHashFull
+```
+
+See [`CHAIN_PATHS.md`](CHAIN_PATHS.md) for the full mapping.
+
 ## INS_SIGN_MSG
 
 Used to sign an lux personal message. 
@@ -339,3 +363,28 @@ storing the confirmed hash for signing later via [INS_SIGN_HASH], skipping the "
 | Field    | Type            | Content     | Note                                  |
 |----------|-----------------|-------------|---------------------------------------|
 | SW1-SW2  | byte (2)        | Return code | see list of return codes              |
+
+## Per-chain UI badge (firmware v0.2.0, future)
+
+The shipping firmware shows the standard Ethereum-app review screen
+for every CLA `0xE0` transaction: integer `chain_id`, recipient,
+value, data. This is sufficient for safety — the user verifies the
+chain by `chain_id` — but does not display a friendly chain name
+("[Hanzo] Transfer", "[Zoo] Mint NFT", …).
+
+A v0.2.0 firmware change adds a chain-id table compiled into the
+binary that maps `chain_id → display name` and renders the name as a
+badge above the operation summary. The wire protocol stays unchanged;
+existing wallets remain compatible.
+
+When the table-driven badge ships, this spec will document the
+optional registration message:
+
+```
+INS_REGISTER_CHAIN  (0x18 on CLA_ETH=0xE0)
+  P1 = 0x00, P2 = 0x00
+  Data = u32 chain_id || u8 name_len || name || sig (vendor-attested)
+```
+
+This is a follow-on. The current Go client and HSM bridge work
+without it.
