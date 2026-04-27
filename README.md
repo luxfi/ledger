@@ -46,6 +46,26 @@ fmt.Printf("App Version: %s\n", version)
 - Transaction signing
 - Message signing
 - Multi-signature support
+- Multi-chain: one Ledger app signs for Lux, Hanzo, Zoo, and Pars
+
+## Chains
+
+| Chain | SLIP-0044 | EIP-155 chain_id | CLA  | Notes                           |
+|-------|-----------|------------------|------|---------------------------------|
+| Lux   | 9000      | 96369            | 0x80 | Native P/X chains + EVM C-Chain |
+| Hanzo | 60        | 36963            | 0xE0 | EVM-compat                      |
+| Zoo   | 60        | 200200           | 0xE0 | EVM-compat                      |
+| Pars  | 60        | 7777             | 0xE0 | EVM-compat                      |
+
+EVM-compat chains share derivation path `m/44'/60'/...` so a single
+hardware key roams across the family; EIP-155 `chain_id` provides
+replay protection. See [`docs/CHAIN_PATHS.md`](docs/CHAIN_PATHS.md)
+for the full path map.
+
+```go
+path, err := ledger.BIP44PathForName("hanzo", 0, 0, 0)
+// path == "m/44'/60'/0'/0/0"
+```
 
 ## Testing
 
