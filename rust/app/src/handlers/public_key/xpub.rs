@@ -128,7 +128,7 @@ impl<'ui> ExtendedPubkeyUIInitializer<'ui> {
         }
     }
 
-    /// Override type of AddrUI between EVM or AVM
+    /// Override type of AddrUI between EVM or XVM
     pub fn set_is_avm(&mut self, is_avm: bool) -> &mut Self {
         unsafe {
             let ui = self.ui.as_mut_ptr();
