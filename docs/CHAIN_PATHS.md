@@ -47,7 +47,7 @@ network accepts the transaction.
 
 ## Liquid family chains
 
-Partner EVM / Partner DEX networks are addressed identically — they are
+Regulated EVM / Regulated DEX networks are addressed identically — they are
 EIP-155 EVM chains, signed via CLA `0xE0` with their published
 `chain_id`. They have no special code in this repository; routing is
 the responsibility of the consuming application's chain registry.
