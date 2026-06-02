@@ -14,7 +14,7 @@ import (
 //
 // The path shape is:
 //
-//   m/44'/<slip44>'/<account>'/<change>/<index>
+//	m/44'/<slip44>'/<account>'/<change>/<index>
 //
 // where slip44 is the chain's SLIP44 field (60 for EVM-compat, 9000 for
 // Lux native). EVM-compat chains share coin type 60 — the EIP-155
@@ -52,7 +52,7 @@ func BIP44PathForName(name string, account, change, index uint32) (string, error
 
 // LuxNativePath returns the native Lux P/X-Chain prefix path
 //
-//   m/44'/9000'/<account>'
+//	m/44'/9000'/<account>'
 //
 // suitable as the rootPath argument to LedgerLux.SignFull /
 // LedgerLux.SignHashFull. The signing API expects a 3-element prefix
@@ -70,7 +70,7 @@ func LuxNativePath(account uint32) string {
 // derivation path itself is identical across EVM-compat siblings, so
 // the same Ledger key signs for Hanzo / Zoo / Pars / Lux C-Chain.
 //
-//   m/44'/60'/<account>'/<change>/<index>
+//	m/44'/60'/<account>'/<change>/<index>
 //
 // This is intentional: a single hardware key roams across every EVM
 // chain in the family. Replay protection comes from chain_id in the
