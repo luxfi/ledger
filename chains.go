@@ -13,11 +13,11 @@ import (
 //
 // One Ledger app, many chains. The on-device firmware ships two CLAs:
 //
-//   CLA = 0x80  — Lux native instructions (P/X/C/Q/Z/A/B/M/F-chain ops,
-//                 Bech32 + cb58 addresses, validator/delegator flows)
-//   CLA = 0xE0  — Ethereum-compatible instructions (any EVM chain;
-//                 EIP-155 tx body carries the chain_id; firmware shows
-//                 the integer chain_id alongside the recipient + value)
+//	CLA = 0x80  — Lux native instructions (P/X/C/Q/Z/A/B/M/F-chain ops,
+//	              Bech32 + cb58 addresses, validator/delegator flows)
+//	CLA = 0xE0  — Ethereum-compatible instructions (any EVM chain;
+//	              EIP-155 tx body carries the chain_id; firmware shows
+//	              the integer chain_id alongside the recipient + value)
 //
 // Every Hanzo / Lux / Zoo / Pars chain that exposes an EVM is reachable
 // today through CLA=0xE0. The Go client picks the correct BIP44
@@ -68,8 +68,8 @@ type Chain struct {
 
 // SLIP-0044 / BIP-44 coin types referenced from this package.
 //
-//   60   — Ethereum (and every EVM-compat chain ridden through it)
-//   9000 — Lux  (registered)
+//	60   — Ethereum (and every EVM-compat chain ridden through it)
+//	9000 — Lux  (registered)
 const (
 	SLIP44Ethereum uint32 = 60
 	SLIP44Lux      uint32 = 9000
