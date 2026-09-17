@@ -177,7 +177,7 @@ func Test_UserPK_HDPaths(t *testing.T) {
 		"038be7f348902d8c20bc88d32294f4f3b819284548122229decd1adf1a7eb0848b",
 	}
 
-	for i := uint32(0); i < 10; i++ {
+	for i := range uint32(10) {
 		path := fmt.Sprintf("m/44'/60'/0'/0/%d", i)
 
 		addr, err := userApp.GetPubKey(path, showAddress, hrp, chainID)
