@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.16",
+    "@types/mdx": "2.0.14",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
